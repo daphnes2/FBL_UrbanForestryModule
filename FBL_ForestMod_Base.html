@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+
+
+<head>
+    <title>FBL Urban Forest Module</title>
+    <meta property="og:description" content="FBL Urban Forest Module." />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'/>
+    <link rel="stylesheet" href="./FBL_ForestMod_CSS.css"> 
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <!--Default map Style-->
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+
+
+<body>
+    <!-- Map-->
+        <div id="map"></div>
+    <!--Filter Overlay Bar-->
+        <div class="map-overlay top">
+        <div class="map-overlay-inner">
+            <nav id="nav-filter">
+
+
+                <fieldset>
+                    <legend style="font-size: 20px;">Ottawa Urban Forest Module</legend>
+                    <label> Compuled by Forest Building Lab @ Carleton University </label>
+                    <label> Last updated: August 2026 </label>    
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>📍Key Locations</legend>
+                        <!-- Toggle Between Ottawa and Gatineau Layers-->
+                        <div id="layer-toggle">
+                            <nav id="menu"></nav>
+                        </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>📅Timeline </legend>
+                        <div class="slidercontainer">
+                            <label>
+                                Year of Construction
+                                <input id="constructionSlider" type="range" min="1800" max="2025" step="1" value="2025">
+                                <span id="constructionValue"></span>
+                            </label>
+                        <div>
+                            <label>
+                                Year of Adaptive Reuse
+                                <input id="reuseSlider" type="range" min="1800" max="2025" step="1" value="2025">
+                                <span id="reuseValue"></span>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>🏠Typology</legend>
+                    <div>
+                        <div>
+                            <label for="operator-species"> Species:</label>
+                            <select name="operator" id="operator-og-typology">
+                                <option value="all">Show all</option>
+                                <option value="Residential">Residential</option>
+                                <option value="Commercial">Commercial</option>
+                                <option value="Industrial">Industrial</option>
+                                <option value="Religious">Religious</option>
+                                <option value="Institutional">Institutional</option>
+                                <option value="Mixed Use">Mixed Use</option>
+                            </select>
+                        </div>
+                    <div>
+                        <div>
+                            <label for="operator-new-typology"> New Typology:</label>
+                            <select name="operator" id="operator-new-typology">
+                                <option value="all">Show all</option>
+                                <option value="Residential">Residential</option>
+                                <option value="Commercial">Commercial</option>
+                                <option value="Industrial">Industrial</option>
+                                <option value="Religious">Religious</option>
+                                <option value="Institutional">Institutional</option>
+                                <option value="Mixed Use">Mixed Use</option>
+                             </select>
+                        </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>👤Occupancy </legend>
+                    <div>
+                            <div>
+                                <label for="operator-occupancy"> </label>
+                                <select name="operator" id="operator-occupancy">
+                                    <option value="all">Show all</option>
+                                    <option value="Occupied">Occupied</option>
+                                    <option value="Intermittent Occupancy">Intermittent Occupancy</option>
+                                    <option value="Vacant">Vacant</option>
+                                </select>
+                            </div>
+                    </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>🏅Notable Designation </legend>
+                    <div>
+                        <div id="filtersNotableDesignation">
+                            <label><input type="checkbox" value="all"> Show All</label>
+                            <label><input type="checkbox" value="Yes"> Yes</label>
+                            <label><input type="checkbox" value="No"> No</label>
+                        </div>
+                    </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>📃Ownership </legend>
+                    <div>
+                        <div id="filtersOwnership">
+                            <label><input type="checkbox" value="all"> Show All</label>
+                            <label><input type="checkbox" value="Private"> Private</label>
+                            <label><input type="checkbox" value="Public"> Public</label>
+                            <label><input type="checkbox" value="Mixed"> Mixed</label>
+                        </div>
+                    </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <button id="reset-filters" type="button">♻️ Reset Filters</button>
+                </fieldset>
+
+
+            </nav>
+        </div>
+        </div>
+    <!--Reset Filters Button-->
+        <button id="toggle-filters">❌ Hide Filters</button>
+    <!--Linking to Javascript File-->
+        <script src="./FBL_ForestMod_JS.js"></script>
+</body>
+
+
+</html>
+
