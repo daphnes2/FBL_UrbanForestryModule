@@ -84,7 +84,7 @@ const map = new maplibregl.Map({
     //Filter Values
         let constructionYear = 2025;
         let reuseYear = 2025;
-        let selectedOriginalTypology = "all";
+        let ownsership = "all";
         let selectedNewTypology = "all";
         let selectedOccupancy = "all";
         let selectedNotable = [];
@@ -252,4 +252,3 @@ const map = new maplibregl.Map({
     updateSelectedNotable();
     updateSelectedOwnership();
     updateFilters();
-
