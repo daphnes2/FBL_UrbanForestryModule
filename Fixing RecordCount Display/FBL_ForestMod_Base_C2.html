@@ -39,7 +39,6 @@
                 <fieldset>
                     <legend>🌳 Species Group</legend>
                     <div>
-                        <label for="operator-species-group"> Group:</label>
                         <select name="operator" id="operator-species-group">
                             <option value="all">Show all</option>
                             <!-- Options are populated from the speciesGroups object in JS -->
@@ -66,24 +65,14 @@
 
 
                 <fieldset>
-                    <legend>📅📏 Plant Date &amp; Diameter</legend>
+                    <legend>📏 Diameter</legend>
                         <div class="slidercontainer">
-                            <label>
-                                Planted On or Before
-                                <input id="plantDateSlider" type="range" min="1900" max="2026" step="1" value="2026">
-                                <span id="plantDateValue"></span>
-                            </label>
-                            <label style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#777;">
-                                <input id="plantDateOnlyKnown" type="checkbox"> Only show trees with a known plant date
-                            </label>
-                        <div>
                             <label>
                                 Diameter (cm) Up To
                                 <input id="diameterSlider" type="range" min="0" max="150" step="1" value="150">
                                 <span id="diameterValue"></span>
                             </label>
                         </div>
-                    </div>
                 </fieldset>
 
 

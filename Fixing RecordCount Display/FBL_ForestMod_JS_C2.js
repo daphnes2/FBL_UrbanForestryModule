@@ -119,9 +119,20 @@ function matchesAnyDefinedGroup(speciesValue) {
 //===================================================================
 const TREE_QUERY_BASE = 'https://maps.ottawa.ca/arcgis/rest/services/Forestry/MapServer/0/query';
 const PAGE_SIZE = 1000;
-const PAGE_CONCURRENCY = 6;
+const PAGE_CONCURRENCY = 8; // browsers cap ~6 concurrent connections per host on HTTP/1.1;
+                             // push higher only if your network panel shows requests actually
+                             // running in parallel rather than queuing.
 
-async function fetchAllTrees(onProgress) {
+// Only request the fields actually used by the popup and filters, instead
+// of outFields=* (which pulls back every field on the layer on every one
+// of the ~300 pages - trimming this noticeably shrinks payload size).
+const TREE_OUT_FIELDS = [
+    'OBJECTID', 'TREEID', 'ADDSTR', 'WARD', 'OWNERSHIP', 'SPECIES', 'DBH',
+    'TRUNCSTRCT', 'STATUS',
+    'HSURFACE', 'SSUPPORT', 'TRGUARD', 'GRATE', 'PLANTER', 'STAKED', 'WTUBES'
+].join(',');
+
+async function fetchAllTrees(onPageLoaded) {
     // 1. Find out how many records exist in total.
     const countUrl = `${TREE_QUERY_BASE}?where=1%3D1&returnCountOnly=true&f=json`;
     const countResp = await fetch(countUrl);
@@ -135,24 +146,26 @@ async function fetchAllTrees(onProgress) {
     const numPages = Math.ceil(total / PAGE_SIZE);
     const offsets = Array.from({ length: numPages }, (_, i) => i * PAGE_SIZE);
 
-    const allFeatures = [];
     let loadedCount = 0;
     let failedPages = 0;
 
     async function fetchPage(offset) {
-        const url = `${TREE_QUERY_BASE}?where=1%3D1&outFields=*&f=geojson`
+        const url = `${TREE_QUERY_BASE}?where=1%3D1&outFields=${TREE_OUT_FIELDS}&f=geojson`
             + `&resultRecordCount=${PAGE_SIZE}&resultOffset=${offset}&orderByFields=OBJECTID`;
         try {
             const resp = await fetch(url);
             const data = await resp.json();
             const feats = data.features || [];
-            allFeatures.push(...feats);
             loadedCount += feats.length;
+            // Stream this page's features to the caller immediately instead
+            // of waiting for every page to finish, so the map can render
+            // progressively.
+            if (onPageLoaded) onPageLoaded(feats, loadedCount, total, failedPages);
         } catch (err) {
             failedPages += 1;
             console.warn(`Failed to load tree page at offset ${offset}:`, err);
+            if (onPageLoaded) onPageLoaded([], loadedCount, total, failedPages);
         }
-        if (onProgress) onProgress(loadedCount, total, failedPages);
     }
 
     // 3. Fetch pages with limited concurrency (simple worker-pool pattern).
@@ -170,12 +183,11 @@ async function fetchAllTrees(onProgress) {
     if (failedPages > 0) {
         console.warn(`${failedPages} of ${numPages} pages failed to load - dataset may be incomplete.`);
     }
-
-    return { type: 'FeatureCollection', features: allFeatures };
 }
 
-// Holds the complete, unfiltered dataset once loaded.
-let allTreesData = null;
+// Holds the complete dataset (grows progressively as pages arrive).
+let allTreesData = { type: 'FeatureCollection', features: [] };
+let stillLoadingTrees = true;
 
 // Simple on-screen status line (loading progress, then result counts).
 function setStatusText(text) {
@@ -187,103 +199,115 @@ function setStatusText(text) {
 // Ottawa Trees Layer (clustered)
 //===================================================================
 map.on('load', () => {
-    map.loadImage(
-        'https://img.icons8.com/?size=100&id=7880&format=png&color=000000',
-        (error, image) => {
-            if (error) throw error;
-            map.addImage('custom-marker', image);
+    // Start with an empty source; real data is streamed in progressively
+    // as pagination pages arrive (see fetchAllTrees() call below).
+    map.addSource('o_trees', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50
+    });
 
-            // Start with an empty source; real data is streamed in once
-            // pagination finishes (see fetchAllTrees() call below).
-            map.addSource('o_trees', {
-                type: 'geojson',
-                data: { type: 'FeatureCollection', features: [] },
-                cluster: true,
-                clusterMaxZoom: 14,
-                clusterRadius: 50
-            });
-
-            // Cluster bubbles
-            map.addLayer({
-                id: 'clusters',
-                type: 'circle',
-                source: 'o_trees',
-                filter: ['has', 'point_count'],
-                paint: {
-                    'circle-color': [
-                        'step', ['get', 'point_count'],
-                        '#8bc98b', 50,
-                        '#5a9c5a', 200,
-                        '#2f6b2f'
-                    ],
-                    'circle-radius': [
-                        'step', ['get', 'point_count'],
-                        16, 50,
-                        22, 200,
-                        28
-                    ],
-                    'circle-stroke-width': 1,
-                    'circle-stroke-color': '#fff'
-                }
-            });
-
-            // Cluster count labels
-            map.addLayer({
-                id: 'cluster-count',
-                type: 'symbol',
-                source: 'o_trees',
-                filter: ['has', 'point_count'],
-                layout: {
-                    'text-field': ['get', 'point_count_abbreviated'],
-                    'text-size': 12
-                },
-                paint: {
-                    'text-color': '#ffffff'
-                }
-            });
-
-            // Individual (unclustered) trees - kept as layer id "o_trees"
-            // so the existing click/popup handlers below don't need to change.
-            map.addLayer({
-                id: 'o_trees',
-                type: 'symbol',
-                source: 'o_trees',
-                filter: ['!', ['has', 'point_count']],
-                layout: {
-                    'icon-image': 'custom-marker',
-                    'icon-size': 0.2
-                }
-            });
-
-            // Click a cluster to zoom into it
-            map.on('click', 'clusters', (e) => {
-                const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-                if (!features.length) return;
-                const clusterId = features[0].properties.cluster_id;
-                map.getSource('o_trees').getClusterExpansionZoom(clusterId, (err, zoom) => {
-                    if (err) return;
-                    map.easeTo({ center: features[0].geometry.coordinates, zoom });
-                });
-            });
-            map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = ''; });
-
-            // Kick off the full paginated load.
-            setStatusText('Loading trees... 0 / ?');
-            fetchAllTrees((loaded, total, failedPages) => {
-                const failNote = failedPages > 0 ? ` (${failedPages} pages failed)` : '';
-                setStatusText(`Loading trees... ${loaded} / ${total}${failNote}`);
-            })
-                .then((geojson) => {
-                    allTreesData = geojson;
-                    updateFilters(); // populates the source with the (currently unfiltered) full dataset
-                })
-                .catch((err) => {
-                    console.error('Failed to load tree inventory:', err);
-                    setStatusText('Error loading tree data - see browser console for details.');
-                });
+    // Cluster bubbles
+    map.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'o_trees',
+        filter: ['has', 'point_count'],
+        paint: {
+            'circle-color': [
+                'step', ['get', 'point_count'],
+                '#8bc98b', 50,
+                '#5a9c5a', 200,
+                '#2f6b2f'
+            ],
+            'circle-radius': [
+                'step', ['get', 'point_count'],
+                16, 50,
+                22, 200,
+                28
+            ],
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#fff'
         }
-    );
+    });
+
+    // Cluster count labels
+    map.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'o_trees',
+        filter: ['has', 'point_count'],
+        layout: {
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-size': 12
+        },
+        paint: {
+            'text-color': '#ffffff'
+        }
+    });
+
+    // Individual (unclustered) trees - kept as layer id "o_trees"
+    // so the existing click/popup handlers below don't need to change.
+    // Using a circle layer instead of a symbol/icon layer is
+    // cheaper to render, which matters once there are tens of
+    // thousands of unclustered points visible at high zoom.
+    map.addLayer({
+        id: 'o_trees',
+        type: 'circle',
+        source: 'o_trees',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+            'circle-radius': 5,
+            'circle-color': '#647c64',
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#ffffff'
+        }
+    });
+
+    // Click a cluster to zoom into it
+    map.on('click', 'clusters', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        if (!features.length) return;
+        const clusterId = features[0].properties.cluster_id;
+        map.getSource('o_trees').getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err) return;
+            map.easeTo({ center: features[0].geometry.coordinates, zoom });
+        });
+    });
+    map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = ''; });
+
+    // Render-throttling: as pages stream in we don't want to call
+    // setData() up to ~300 times (once per page) - that has its own
+    // overhead. Instead we batch pending pages into allTreesData and
+    // schedule at most one render per animation frame.
+    let renderScheduled = false;
+    function scheduleRender() {
+        if (renderScheduled) return;
+        renderScheduled = true;
+        requestAnimationFrame(() => {
+            renderScheduled = false;
+            updateFilters();
+        });
+    }
+
+    setStatusText('Loading trees... 0 / ?');
+    fetchAllTrees((newFeatures, loaded, total, failedPages) => {
+        allTreesData.features.push(...newFeatures);
+        const failNote = failedPages > 0 ? ` (${failedPages} pages failed)` : '';
+        setStatusText(`Loading trees... ${loaded} / ${total}${failNote}`);
+        scheduleRender();
+    })
+        .then(() => {
+            stillLoadingTrees = false;
+            updateFilters(); // final render to guarantee the last page is reflected, now shows "Showing X of Y"
+        })
+        .catch((err) => {
+            console.error('Failed to load tree inventory:', err);
+            setStatusText('Error loading tree data - see browser console for details.');
+        });
 });
 
 //===================================================================
@@ -339,9 +363,7 @@ toggleBtn.addEventListener('click', () => {
 //===================================================================
 let selectedSpeciesGroup = 'all';
 let selectedConditions = [];       // e.g. ['HSURFACE', 'GRATE']
-let maxPlantYear = 2026;
 let maxDiameter = 150;
-let onlyKnownPlantDate = false;    // diagnostic toggle - see plantDateOnlyKnown checkbox
 
 //===================================================================
 // Per-tree predicate + combined client-side filter
@@ -360,20 +382,6 @@ function passesConditionFilter(props) {
     return selectedConditions.some((field) => props[field] === -1);
 }
 
-// PLNTDATE may come back as an ISO 8601 string or a raw epoch-ms number
-// depending on the service - native JS Date parsing handles either.
-// Trees with no recorded plant date always pass (treated as "Unknown"),
-// unless the "only known" diagnostic checkbox is enabled.
-function passesPlantDateFilter(props) {
-    const val = props.PLNTDATE;
-    if (val === null || val === undefined || val === '') {
-        return !onlyKnownPlantDate;
-    }
-    const d = new Date(val);
-    if (isNaN(d.getTime())) return !onlyKnownPlantDate;
-    return d.getUTCFullYear() <= maxPlantYear;
-}
-
 // Trees with no recorded diameter always pass.
 function passesDiameterFilter(props) {
     const val = props.DBH;
@@ -384,13 +392,10 @@ function passesDiameterFilter(props) {
 function treePassesFilters(props) {
     return passesSpeciesFilter(props)
         && passesConditionFilter(props)
-        && passesPlantDateFilter(props)
         && passesDiameterFilter(props);
 }
 
 function updateFilters() {
-    if (!allTreesData) return; // still loading
-
     const filteredFeatures = allTreesData.features.filter((f) => treePassesFilters(f.properties));
 
     const source = map.getSource('o_trees');
@@ -398,7 +403,12 @@ function updateFilters() {
         source.setData({ type: 'FeatureCollection', features: filteredFeatures });
     }
 
-    setStatusText(`Showing ${filteredFeatures.length.toLocaleString()} of ${allTreesData.features.length.toLocaleString()} trees`);
+    // While pages are still streaming in, the loading-progress callback
+    // owns the status text - don't fight it with a "Showing X of Y" line
+    // that would just be stale a moment later.
+    if (!stillLoadingTrees) {
+        setStatusText(`Showing ${filteredFeatures.length.toLocaleString()} of ${allTreesData.features.length.toLocaleString()} trees`);
+    }
 }
 
 //===================================================================
@@ -427,37 +437,18 @@ document.querySelectorAll('#filtersPlantingConditions input[type=checkbox]').for
 });
 
 //===================================================================
-// Plant Date / Diameter sliders
+// Diameter slider
 //===================================================================
-const plantDateSlider = document.getElementById('plantDateSlider');
 const diameterSlider = document.getElementById('diameterSlider');
-const plantDateValue = document.getElementById('plantDateValue');
 const diameterValue = document.getElementById('diameterValue');
 
-plantDateValue.textContent = plantDateSlider.value;
 diameterValue.textContent = diameterSlider.value;
-
-plantDateSlider.addEventListener('input', (e) => {
-    maxPlantYear = parseInt(e.target.value);
-    plantDateValue.textContent = maxPlantYear;
-    updateFilters();
-});
 
 diameterSlider.addEventListener('input', (e) => {
     maxDiameter = parseInt(e.target.value);
     diameterValue.textContent = maxDiameter;
     updateFilters();
 });
-
-// Diagnostic checkbox: hides trees with no recorded PLNTDATE so you can
-// see the slider's effect in isolation.
-const plantDateOnlyKnownCheckbox = document.getElementById('plantDateOnlyKnown');
-if (plantDateOnlyKnownCheckbox) {
-    plantDateOnlyKnownCheckbox.addEventListener('change', (e) => {
-        onlyKnownPlantDate = e.target.checked;
-        updateFilters();
-    });
-}
 
 //===================================================================
 // Reset Filters Button
@@ -474,17 +465,10 @@ resetBtn.addEventListener('click', () => {
         cb.checked = false;
     });
 
-    // Reset sliders
-    maxPlantYear = parseInt(plantDateSlider.max);
+    // Reset slider
     maxDiameter = parseInt(diameterSlider.max);
-    plantDateSlider.value = maxPlantYear;
     diameterSlider.value = maxDiameter;
-    plantDateValue.textContent = maxPlantYear;
     diameterValue.textContent = maxDiameter;
-
-    // Reset diagnostic checkbox
-    onlyKnownPlantDate = false;
-    if (plantDateOnlyKnownCheckbox) plantDateOnlyKnownCheckbox.checked = false;
 
     updateFilters();
 });
