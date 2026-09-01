@@ -1,0 +1,330 @@
+/*Style for Icon Pop-Ups */
+
+    /* Make each <p> in popup look like a 'grouped card' */
+      .maplibregl-popup-content p {
+        border: 1px solid #e0e4eb;
+        border-radius: 10px;
+        padding: 6px 10px;
+        margin: 6px 0;
+        background: #fff;
+        }
+
+    /* Style strong tags like "legend" headers */
+      .maplibregl-popup-content p strong {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+        color: #444;
+        }
+
+
+/* ============================================================
+   Layout shell
+   ============================================================ */
+
+    html, body, #map {
+        height: 100%;
+        }
+
+    .map-overlay {
+        font: 13px/1.5 'Open Sans', Arial, Helvetica, sans-serif;
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: calc(100vh - 28px);
+        }
+
+
+/* ============================================================
+   Title card - static, always visible, not part of the menu
+   ============================================================ */
+
+    .title-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(6px);
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        padding: 14px 20px;
+        }
+
+    .title-card .logo {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        }
+
+    .title-card .logo svg {
+        width: 100%;
+        height: 100%;
+        }
+
+    .title-card .title-text h1 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #111;
+        line-height: 1.15;
+        }
+
+    .title-card .title-text p {
+        margin: 3px 0 0;
+        font-size: 0.68rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #888;
+        }
+
+
+/* ============================================================
+   Menu: icon rail (always visible) + flyout panel (only when
+   a tab is active)
+   ============================================================ */
+
+    .menu-wrap {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-height: 0;
+        }
+
+    .menu-rail {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(6px);
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        padding: 8px;
+        flex-shrink: 0;
+        }
+
+    .rail-btn {
+        width: 38px;
+        height: 38px;
+        border: none;
+        background: transparent;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #333;
+        transition: background 0.15s, color 0.15s;
+        padding: 0;
+        }
+
+    .rail-btn svg {
+        width: 20px;
+        height: 20px;
+        pointer-events: none;
+        }
+
+    .rail-btn:hover {
+        background: #f0f2f0;
+        }
+
+    .rail-btn.active {
+        background: #9fa19f;
+        color: #fff;
+        }
+
+    .rail-btn.active svg path,
+    .rail-btn.active svg line,
+    .rail-btn.active svg circle {
+        stroke: #222222;
+        }
+
+    .rail-btn.active svg path[fill]:not([fill="none"]) {
+        fill: #222222;
+        }
+
+    .tab-panel {
+        display: none;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(6px);
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        width: 300px;
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+        flex-shrink: 0;
+        }
+
+    .tab-panel.active {
+        display: block;
+        }
+
+    .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px 8px;
+        position: sticky;
+        top: 0;
+        background: inherit;
+        }
+
+    .panel-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #222;
+        }
+
+    .panel-close {
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1.1rem;
+        line-height: 1;
+        color: #999;
+        padding: 2px 6px;
+        border-radius: 6px;
+        transition: background 0.15s, color 0.15s;
+        }
+
+    .panel-close:hover {
+        background: #f0f2f0;
+        color: #333;
+        }
+
+    .panel-body {
+        padding: 0 16px 16px;
+        }
+
+
+/* ============================================================
+   Fieldset card style (used inside panel bodies)
+   ============================================================ */
+
+      fieldset {
+        border: 1px solid #e0e4eb;
+        border-radius: 10px;
+        margin: 0 0 14px;
+        padding: 5px 10px 12px;
+        background: #fff;
+        }
+
+      legend {
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0 6px;
+        color: #444;
+        }
+
+
+    /* Inputs */
+      label {
+        display: block;
+        margin: 0.5rem 0;
+        font-size: 0.85rem;
+        color: #333;
+        }
+
+      select, input[type="range"] {
+        width: 100%;
+        margin-top: 4px;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 0.85rem;
+        }
+
+      input[type="range"] {
+        padding: 0;
+        }
+
+
+    /* Checkbox groups */
+      #filtersPlantingConditions label,
+      #layerCheckboxes label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 4px 0;
+        font-size: 0.85rem;
+        }
+
+
+/* ============================================================
+   Legend
+   ============================================================ */
+
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0;
+        font-size: 0.82rem;
+        color: #333;
+        }
+
+      .legend-swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 1px solid rgba(0,0,0,0.15);
+        flex-shrink: 0;
+        }
+
+      .legend-swatch.round {
+        border-radius: 50%;
+        }
+
+
+/* ============================================================
+   Layer status / result text
+   ============================================================ */
+
+      #layerStatus {
+        font-size: 0.75rem;
+        color: #777;
+        margin-top: 6px;
+        }
+
+      #filter-result {
+        font-size: 0.75rem;
+        color: #555;
+        background: #f9fafc;
+        border: 1px solid #e5e8f1;
+        border-radius: 6px;
+        padding: 6px;
+        font-family: "Courier New", monospace;
+        }
+
+      .data-source-note {
+        font-size: 0.72rem;
+        color: #999;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #eef0f4;
+        }
+
+
+    /* Reset button */
+      #reset-filters {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        border: 1px solid #e0e4eb;
+        background: #f2f2f2;
+        cursor: pointer;
+        transition: background 0.2s;
+        }
+
+      #reset-filters:hover {
+        background: #e6e6e6;
+        }

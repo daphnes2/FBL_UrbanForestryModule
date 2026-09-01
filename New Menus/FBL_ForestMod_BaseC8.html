@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+
+
+<head>
+    <title>FBL Urban Forest Module</title>
+    <meta property="og:description" content="FBL Urban Forest Module." />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'/>
+    <link rel="stylesheet" href="./FBL_ForestMod_CSSC8.css"> 
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <!--Default map Style-->
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+
+
+<body>
+    <!-- Map-->
+        <div id="map"></div>
+
+    <!-- Title card + Menu -->
+        <div class="map-overlay">
+
+            <!-- Static title card, always visible, not part of the collapsible menu -->
+            <div class="title-card">
+                <div class="logo">
+                    <!-- FBLLogoSVG, inlined -->
+                    <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 29.34">
+                        <path d="M24,10.32v1.81c-.39.87-.84,1.39-1.54,2.22v-1.94S12.07,2.12,12.07,2.12L1.64,12.43l-.09,4.29c-.6-.62-1.02-1.38-1.33-2.23L0,13.95v-2.3c.62-1.62,1.51-3.16,3.34-3.93-.54-1.24-.42-2.42.23-3.37.78-1.15,2.03-1.24,3.31-1.3.41-.95,1.11-1.95,1.99-2.29,1.08-.41,2.17-.13,3.15.42,1.04-1,2.26-1.5,3.69-.98,1.14.41,1.74,1.52,2.09,2.8.98.16,2.12.53,2.67,1.31.59.83.66,1.83.48,2.9,1.58.51,2.57,1.61,3.04,3.1Z"/>
+                        <path d="M22.39,29.34H1.55s-.01-12.64-.01-12.64l1.54,1.1.03-4.87L12.01,4.1l8.86,8.79.06,2.23,1.52-.77-.07,14.99ZM11.18,20.78c-1.51.82-2.46.8-3.63.19-.78-.41-1.37-1.52-1.61-2.45l-2.85-.6.02,9.88h8.1s-.03-7.01-.03-7.01ZM12.79,27.8l8.14-.02-.05-9.58c-1.57,3.25-4.68,4.44-8.11,2.77l.02,6.83Z"/>
+                    </svg>
+                </div>
+                <div class="title-text">
+                    <h1>Ottawa Urban Forestry Module</h1>
+                    <p>2026 &copy; Forest Building Lab</p>
+                </div>
+            </div>
+
+            <!-- Icon rail (always visible) + flyout panel (only when a tab is open) -->
+            <div class="menu-wrap">
+
+                <div class="menu-rail">
+                    <button type="button" class="rail-btn" data-tab="info" aria-label="Info" title="Info">
+                        <!-- info-circle-svgrepo-com -->
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                            <line x1="12" x2="12" y1="12" y2="16" fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                            <line x1="12" x2="12" y1="8" y2="8" fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="rail-btn" data-tab="layers" aria-label="Layers" title="Layers">
+                        <!-- layers-3-svgrepo-com -->
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12.4475 1.10557C12.1659 0.964809 11.8346 0.964809 11.553 1.10557L1.55303 6.10557C1.21425 6.27496 1.00024 6.62123 1.00024 7C1.00024 7.37877 1.21425 7.72504 1.55303 7.89443L11.553 12.8944C11.8346 13.0352 12.1659 13.0352 12.4475 12.8944L22.4475 7.89443C22.7862 7.72504 23.0002 7.37877 23.0002 7C23.0002 6.62123 22.7862 6.27496 22.4475 6.10557L12.4475 1.10557Z" fill="#000000"/>
+                            <path d="M1.10579 16.5528C1.35278 16.0588 1.95345 15.8586 2.44743 16.1055L12.0002 20.8819L21.553 16.1055C22.047 15.8586 22.6477 16.0588 22.8946 16.5528C23.1416 17.0467 22.9414 17.6474 22.4474 17.8944L12.4474 22.8944C12.1659 23.0352 11.8345 23.0352 11.553 22.8944L1.55301 17.8944C1.05903 17.6474 0.858803 17.0467 1.10579 16.5528Z" fill="#000000"/>
+                            <path d="M2.44743 11.1055C1.95345 10.8586 1.35278 11.0588 1.10579 11.5528C0.858803 12.0467 1.05903 12.6474 1.55301 12.8944L11.553 17.8944C11.8345 18.0352 12.1659 18.0352 12.4474 17.8944L22.4474 12.8944C22.9414 12.6474 23.1416 12.0467 22.8946 11.5528C22.6477 11.0588 22.047 10.8586 21.553 11.1055L12.0002 15.8819L2.44743 11.1055Z" fill="#000000"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="rail-btn" data-tab="legend" aria-label="Legend" title="Legend">
+                        <!-- legend-svgrepo-com -->
+                        <svg fill="#000000" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="16" y="22" width="14" height="2"/>
+                            <rect x="4" y="20" width="6" height="6" rx="1"/>
+                            <rect x="16" y="8" width="14" height="2"/>
+                            <path d="M9.5,12h-5a.5.5,0,0,1-.4473-.7236l2.5-5.0224a.5206.5206,0,0,1,.8945,0l2.5,5.0225A.5.5,0,0,1,9.5,12Z"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="rail-btn" data-tab="filters" aria-label="Filters" title="Filters">
+                        <!-- filter-svgrepo-com -->
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 5.6001C20 5.04005 19.9996 4.75981 19.8906 4.5459C19.7948 4.35774 19.6423 4.20487 19.4542 4.10899C19.2403 4 18.9597 4 18.3996 4H5.59961C5.03956 4 4.75981 4 4.5459 4.10899C4.35774 4.20487 4.20487 4.35774 4.10899 4.5459C4 4.75981 4 5.04005 4 5.6001V6.33736C4 6.58195 4 6.70433 4.02763 6.81942C4.05213 6.92146 4.09263 7.01893 4.14746 7.1084C4.20928 7.20928 4.29591 7.29591 4.46875 7.46875L9.53149 12.5315C9.70443 12.7044 9.79044 12.7904 9.85228 12.8914C9.90711 12.9808 9.94816 13.0786 9.97266 13.1807C10 13.2946 10 13.4155 10 13.6552V18.411C10 19.2682 10 19.6971 10.1805 19.9552C10.3382 20.1806 10.5814 20.331 10.8535 20.3712C11.1651 20.4172 11.5487 20.2257 12.3154 19.8424L13.1154 19.4424C13.4365 19.2819 13.5966 19.2013 13.7139 19.0815C13.8176 18.9756 13.897 18.8485 13.9453 18.7084C14 18.5499 14 18.37 14 18.011V13.6626C14 13.418 14 13.2958 14.0276 13.1807C14.0521 13.0786 14.0926 12.9808 14.1475 12.8914C14.2089 12.7911 14.2947 12.7053 14.4653 12.5347L14.4688 12.5315L19.5315 7.46875C19.7044 7.2958 19.7904 7.20932 19.8523 7.1084C19.9071 7.01893 19.9482 6.92146 19.9727 6.81942C20 6.70551 20 6.58444 20 6.3448V5.6001Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Info panel -->
+                <div id="panel-info" class="tab-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Info</span>
+                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="panel-body">
+                        <p style="font-size:0.85rem; color:#333; margin:0 0 10px;">
+                            An interactive map of Ottawa &amp; Gatineau's street trees, compiled by the Forest Building Lab at Carleton University.
+                        </p>
+                        <p style="font-size:0.8rem; color:#555; margin:0 0 4px;"><b>Compiled by:</b> Forest Building Lab @ Carleton University</p>
+                        <p style="font-size:0.8rem; color:#555; margin:0 0 4px;"><b>Last updated:</b> August 2026</p>
+                        <div class="data-source-note">
+                            <b>Data Source(s):</b><br>
+                            Open Data Ottawa (Forestry, Wards 2022&ndash;2026, Tree Equity Score 2025)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layers panel -->
+                <div id="panel-layers" class="tab-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Layers</span>
+                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="layerCheckboxes">
+                            <label><input type="checkbox" id="layerTreesToggle" checked> Ottawa Street Trees</label>
+                            <label><input type="checkbox" id="layerWardsToggle"> Ottawa Wards</label>
+                            <label><input type="checkbox" id="layerEquityToggle"> Tree Equity Score 2025</label>
+                        </div>
+                        <p style="font-size: 0.75rem; color: #555; margin: 10px 0 0;">
+                            Tree Equity Score reflects the distribution of the urban tree canopy in relation to socio-economic factors. A high value reflects areas whose tree canopy is suitably beneficial, whereas a low value reflects areas where the tree canopy doesn't meet the needs of its residents.
+                        </p>
+                        <div id="layerStatus"></div>
+                        <div class="data-source-note">
+                            <b>Data Source(s):</b><br>Open Data Ottawa
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legend panel -->
+                <div id="panel-legend" class="tab-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Species Building Groups</span>
+                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="legend-species-groups">
+                            <!-- Populated by JS from GROUP_COLORS / speciesGroupKeys, single source of truth -->
+                        </div>
+                        <div id="legend-cluster-density" style="margin-top:14px;">
+                            <!-- Populated by JS: an example donut + explanation, built from buildDonutMarkerEl -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters panel -->
+                <div id="panel-filters" class="tab-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Filters</span>
+                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="panel-body">
+
+                        <fieldset>
+                            <legend>🌳 Species Group</legend>
+                            <div>
+                                <label for="operator-species-group"> Group:</label>
+                                <select name="operator" id="operator-species-group">
+                                    <option value="all">Show all</option>
+                                    <!-- Options are populated from the speciesGroups object in JS -->
+                                </select>
+                            </div>
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>🌱 Planting Conditions</legend>
+                            <div id="filtersPlantingConditions">
+                                <label><input type="checkbox" value="HSURFACE"> Hard Surface</label>
+                                <label><input type="checkbox" value="SSUPPORT"> Structural Support</label>
+                                <label><input type="checkbox" value="TRGUARD"> Tree Guard</label>
+                                <label><input type="checkbox" value="GRATE"> Grate</label>
+                                <label><input type="checkbox" value="PLANTER"> Planter</label>
+                                <label><input type="checkbox" value="STAKED"> Staked</label>
+                                <label><input type="checkbox" value="WTUBES"> Watering Tubes</label>
+                            </div>
+                            <p style="font-size: 0.75rem; color: #777; margin: 6px 0 0;">
+                                Leave all unchecked to show every tree.
+                            </p>
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>📏 Diameter</legend>
+                            <div>
+                                <label for="diameterClassSelect"> Diameter class:</label>
+                                <select id="diameterClassSelect">
+                                    <option value="all">Show all</option>
+                                    <!-- Options are populated from DIAMETER_CLASSES in JS -->
+                                </select>
+                            </div>
+                        </fieldset>
+
+                        <fieldset>
+                            <button id="reset-filters" type="button">♻️ Reset Filters</button>
+                            <div id="filter-result" style="margin-top:8px;"></div>
+                        </fieldset>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    <!--Linking to Javascript File-->
+        <script src="./FBL_ForestMod_JSC8.js"></script>
+</body>
+
+
+</html>

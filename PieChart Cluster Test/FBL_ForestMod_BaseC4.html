@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+
+
+<head>
+    <title>FBL Urban Forest Module</title>
+    <meta property="og:description" content="FBL Urban Forest Module." />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'/>
+    <link rel="stylesheet" href="./FBL_ForestMod_CSSC4.css"> 
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <!--Default map Style-->
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+
+
+<body>
+    <!-- Map-->
+        <div id="map"></div>
+    <!--Filter Overlay Bar-->
+        <div class="map-overlay top">
+        <div class="map-overlay-inner">
+            <nav id="nav-filter">
+
+
+                <fieldset>
+                    <legend style="font-size: 20px;">Ottawa Urban Forest Module</legend>
+                    <label> Compiled by Forest Building Lab @ Carleton University </label>
+                    <label> Last updated: August 2026 </label>    
+                </fieldset>
+
+
+                <div class="tab-bar">
+                    <button type="button" class="tab-btn active" data-tab="filters">🔎 Filters</button>
+                    <button type="button" class="tab-btn" data-tab="legend">🎨 Legend</button>
+                    <button type="button" class="tab-btn" data-tab="layers">🗺️ Layers</button>
+                </div>
+
+
+                <div id="tab-filters" class="tab-panel active">
+
+
+                <fieldset>
+                    <legend>🌳 Species Group</legend>
+                    <div>
+                        <label for="operator-species-group"> Group:</label>
+                        <select name="operator" id="operator-species-group">
+                            <option value="all">Show all</option>
+                            <!-- Options are populated from the speciesGroups object in JS -->
+                        </select>
+                    </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>🌱 Planting Conditions</legend>
+                    <div id="filtersPlantingConditions">
+                        <label><input type="checkbox" value="HSURFACE"> Hard Surface</label>
+                        <label><input type="checkbox" value="SSUPPORT"> Structural Support</label>
+                        <label><input type="checkbox" value="TRGUARD"> Tree Guard</label>
+                        <label><input type="checkbox" value="GRATE"> Grate</label>
+                        <label><input type="checkbox" value="PLANTER"> Planter</label>
+                        <label><input type="checkbox" value="STAKED"> Staked</label>
+                        <label><input type="checkbox" value="WTUBES"> Watering Tubes</label>
+                    </div>
+                    <p style="font-size: 0.75rem; color: #777; margin: 6px 0 0;">
+                        Leave all unchecked to show every tree. Checking one or more shows trees with any of the selected conditions.
+                    </p>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>📏 Diameter</legend>
+                    <div>
+                        <label for="diameterClassSelect"> Diameter class:</label>
+                        <select id="diameterClassSelect">
+                            <option value="all">Show all</option>
+                            <!-- Options are populated from DIAMETER_CLASSES in JS -->
+                        </select>
+                    </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <button id="reset-filters" type="button">♻️ Reset Filters</button>
+                    <div id="filter-result" style="margin-top:8px;"></div>
+                </fieldset>
+
+
+                </div>
+
+
+                <div id="tab-legend" class="tab-panel">
+
+
+                <fieldset>
+                    <legend>🌲 Species Group Colors</legend>
+                    <div id="legend-species-groups">
+                        <!-- Populated by JS from GROUP_COLORS / speciesGroupKeys, single source of truth -->
+                    </div>
+                </fieldset>
+
+
+                <fieldset>
+                    <legend>🥧 Cluster Bubbles</legend>
+                    <p style="font-size: 0.75rem; color: #777; margin: 0 0 6px;">
+                        When trees are too close together to show individually, they're grouped into a donut-chart bubble showing the species mix inside it.
+                    </p>
+                    <div id="legend-cluster-density">
+                        <!-- Populated by JS: an example donut + explanation, built from buildDonutMarkerEl -->
+                    </div>
+                </fieldset>
+
+
+                </div>
+
+
+                <div id="tab-layers" class="tab-panel">
+
+
+                <fieldset>
+                    <legend>🗺️ Layers</legend>
+                    <div id="layerCheckboxes">
+                        <label><input type="checkbox" id="layerTreesToggle" checked> Ottawa Street Trees</label>
+                        <label><input type="checkbox" id="layerWardsToggle"> Ottawa Wards</label>
+                        <label><input type="checkbox" id="layerEquityToggle"> Tree Equity Score 2025 (all areas)</label>
+                    </div>
+                    <p style="font-size: 0.75rem; color: #777; margin: 6px 0 0;">
+                        Tree Equity Score covers Downtown Core, Inner Urban, Outer Urban, and Suburban areas together - one tick shows or hides all four at once.
+                    </p>
+                    <div id="layerStatus"></div>
+                </fieldset>
+
+
+                </div>
+
+
+            </nav>
+        </div>
+        </div>
+    <!--Reset Filters Button-->
+        <button id="toggle-filters">❌ Hide Filters</button>
+    <!--Linking to Javascript File-->
+        <script src="./FBL_ForestMod_JSC6.js"></script>
+</body>
+
+
+</html>
