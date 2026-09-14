@@ -10,7 +10,7 @@
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'/>
-    <link rel="stylesheet" href="./FBL_ForestMod_CSSC15.css"> 
+    <link rel="stylesheet" href="./FBL_ForestMod_CSSC20.css"> 
     <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
     <!--Default map Style-->
     <style>
@@ -79,12 +79,16 @@
                     </button>
                 </div>
 
-                <!-- Info panel -->
-                <div id="panel-info" class="tab-panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Info</span>
-                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
-                    </div>
+                <!-- One unified, scrollable panel containing all four
+                     collapsible sections (Info / Layers / Legend / Filters) -->
+                <div class="unified-panel" id="unifiedPanel">
+
+                <!-- Info section -->
+                <div id="panel-info" class="panel-section">
+                    <button type="button" class="section-header" data-tab="info">
+                        <span class="section-title">Info</span>
+                        <span class="section-toggle-icon"></span>
+                    </button>
                     <div class="panel-body">
                         <p style="font-size:0.85rem; color:#333; margin:0 0 10px;">
                             An interactive map of Ottawa &amp; Gatineau's street trees, compiled by the Forest Building Lab at Carleton University.
@@ -98,12 +102,12 @@
                     </div>
                 </div>
 
-                <!-- Layers panel -->
-                <div id="panel-layers" class="tab-panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Layers</span>
-                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
-                    </div>
+                <!-- Layers section -->
+                <div id="panel-layers" class="panel-section">
+                    <button type="button" class="section-header" data-tab="layers">
+                        <span class="section-title">Layers</span>
+                        <span class="section-toggle-icon"></span>
+                    </button>
                     <div class="panel-body">
                         <div id="layerCheckboxes">
                             <label><input type="checkbox" id="layerTreesToggle" checked> Ottawa Street Trees</label>
@@ -123,12 +127,12 @@
                     </div>
                 </div>
 
-                <!-- Legend panel -->
-                <div id="panel-legend" class="tab-panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Species Building Groups</span>
-                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
-                    </div>
+                <!-- Legend section -->
+                <div id="panel-legend" class="panel-section">
+                    <button type="button" class="section-header" data-tab="legend">
+                        <span class="section-title">Species Building Groups</span>
+                        <span class="section-toggle-icon"></span>
+                    </button>
                     <div class="panel-body">
                         <div id="legend-species-groups">
                             <!-- Populated by JS from GROUP_COLORS / speciesGroupKeys, single source of truth -->
@@ -139,24 +143,13 @@
                     </div>
                 </div>
 
-                <!-- Filters panel -->
-                <div id="panel-filters" class="tab-panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Filters</span>
-                        <button type="button" class="panel-close" aria-label="Close">&times;</button>
-                    </div>
+                <!-- Filters section -->
+                <div id="panel-filters" class="panel-section">
+                    <button type="button" class="section-header" data-tab="filters">
+                        <span class="section-title">Filters</span>
+                        <span class="section-toggle-icon"></span>
+                    </button>
                     <div class="panel-body">
-
-                        <fieldset>
-                            <legend>🌳 Species Group</legend>
-                            <div>
-                                <label for="operator-species-group"> Group:</label>
-                                <select name="operator" id="operator-species-group">
-                                    <option value="all">Show all</option>
-                                    <!-- Options are populated from the speciesGroups object in JS -->
-                                </select>
-                            </div>
-                        </fieldset>
 
                         <fieldset>
                             <legend>🔍 Individual Species</legend>
@@ -176,8 +169,19 @@
                                 </div>
                             </div>
                             <p style="font-size: 0.75rem; color: #777; margin: 6px 0 0;">
-                                Leave unselected to show every species. Selecting one or more shows only those exact species (in addition to any Species Group filter above).
+                                Leave unselected to show every species. Selecting one or more shows only those exact species (in addition to any Species Group filter below).
                             </p>
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>🌳 Species Group</legend>
+                            <div>
+                                <label for="operator-species-group"> Group:</label>
+                                <select name="operator" id="operator-species-group">
+                                    <option value="all">Show all</option>
+                                    <!-- Options are populated from the speciesGroups object in JS -->
+                                </select>
+                            </div>
                         </fieldset>
 
                         <fieldset>
@@ -219,6 +223,8 @@
                     </div>
                 </div>
 
+                </div>
+
             </div>
         </div>
 
@@ -240,7 +246,7 @@
         </div>
 
     <!--Linking to Javascript File-->
-        <script src="./FBL_ForestMod_JSC15.js"></script>
+        <script src="./FBL_ForestMod_JSC20.js"></script>
 </body>
 
 
