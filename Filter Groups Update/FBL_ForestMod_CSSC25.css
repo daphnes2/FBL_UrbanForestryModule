@@ -1,0 +1,756 @@
+/*Style for Icon Pop-Ups */
+
+    /* Make each <p> in popup look like a 'grouped card' */
+      .maplibregl-popup-content p {
+        border: 1px solid #e0e4eb;
+        border-radius: 10px;
+        padding: 6px 10px;
+        margin: 6px 0;
+        background: #fff;
+        }
+
+    /* Style strong tags like "legend" headers */
+      .maplibregl-popup-content p strong {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+        color: #444;
+        }
+
+
+/* ============================================================
+   Layout shell
+   ============================================================ */
+
+    html, body, #map {
+        height: 100%;
+        }
+
+    .map-overlay {
+        font: 13px/1.5 'Open Sans', Arial, Helvetica, sans-serif;
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: calc(100vh - 28px);
+        }
+
+
+/* ============================================================
+   Title card - static, always visible, not part of the menu
+   ============================================================ */
+
+    .title-card {
+        /* Scoped fix instead of changing .map-overlay's align-items: that
+           approach also stopped .menu-wrap from stretching, which broke
+           its multi-panel side-by-side layout. align-self here only
+           opts THIS card out of stretching to match .menu-wrap's width,
+           leaving .menu-wrap's own sizing untouched. */
+        align-self: flex-start;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(6px);
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        padding: 14px 20px;
+        }
+
+    .title-card .logo {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        }
+
+    .title-card .logo svg {
+        width: 100%;
+        height: 100%;
+        }
+
+    .title-card .title-text h1 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #111;
+        line-height: 1.15;
+        }
+
+    .title-card .title-text p {
+        margin: 3px 0 0;
+        font-size: 0.68rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #888;
+        }
+
+
+/* ============================================================
+   Menu: icon rail (always visible) + flyout panel (only when
+   a tab is active)
+   ============================================================ */
+
+    .menu-wrap {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 10px;
+        min-height: 0;
+        }
+
+    /* Once a tab is open, the rail + the unified panel (open beside it)
+       detach from their normal floating position and pin to the actual
+       left edge of the browser window - same icons, fonts and card
+       styling as the floating version, just anchored differently.
+       Toggled via JS (see updateMenuPinnedState()) whenever any
+       .panel-section gains/loses .active. */
+    .menu-wrap.pinned {
+        position: fixed;
+        left: 0;
+        top: 100px; /* clears the title card - approx its height + margins */
+        bottom: 14px;
+        padding-left: 14px;
+        overflow-y: auto;
+        z-index: 4;
+        }
+
+    .menu-rail {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(6px);
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        padding: 8px;
+        flex-shrink: 0;
+        }
+
+    .rail-btn {
+        width: 38px;
+        height: 38px;
+        border: none;
+        background: transparent;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #333;
+        transition: background 0.15s, color 0.15s;
+        padding: 0;
+        }
+
+    .rail-btn svg {
+        width: 20px;
+        height: 20px;
+        pointer-events: none;
+        }
+
+    .rail-btn:hover {
+        background: #f0f2f0;
+        }
+
+    .rail-btn.active {
+        background: #9fa19f;
+        color: #fff;
+        }
+
+    .rail-btn.active svg path,
+    .rail-btn.active svg line,
+    .rail-btn.active svg circle {
+        stroke: #222222;
+        }
+
+    .rail-btn.active svg path[fill]:not([fill="none"]) {
+        fill: #222222;
+        }
+
+    /* One unified, scrollable card next to the rail - replaces the old
+       "one separate floating card per tab" approach. Sections inside it
+       expand/collapse independently, but they all share a single scroll
+       region and a single fixed position, matching the reference layout
+       provided. */
+    .unified-panel {
+        display: none;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(6px);
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        width: 300px; /* fallback only - JS measures .title-card's actual
+                          rendered width and overrides this inline via
+                          syncPanelWidthToTitleCard(), so the panel always
+                          matches the title card exactly */
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+        flex-shrink: 0;
+        }
+
+    .unified-panel.open {
+        display: block;
+        }
+
+    /* Each collapsible section - header always visible, body toggles */
+    .panel-section {
+        border-bottom: 1px solid #eef0f4;
+        }
+
+    .panel-section:last-child {
+        border-bottom: none;
+        }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 14px 16px;
+        text-align: left;
+        }
+
+    .section-header:hover {
+        background: #f9fafc;
+        }
+
+    .section-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #222;
+        }
+
+    .section-toggle-icon {
+        color: #999;
+        font-size: 1rem;
+        line-height: 1;
+        flex-shrink: 0;
+        margin-left: 8px;
+        }
+
+    /* Chevron (collapsed) vs minus (expanded), swapped via CSS so no
+       extra JS bookkeeping is needed for the icon itself. */
+    .section-toggle-icon::before {
+        content: "⌄";
+        }
+
+    .panel-section.active .section-toggle-icon::before {
+        content: "–";
+        }
+
+    .panel-body {
+        display: none;
+        padding: 0 16px 16px;
+        }
+
+    .panel-section.active .panel-body {
+        display: block;
+        }
+
+
+
+/* ============================================================
+   Fieldset card style (used inside panel bodies)
+   ============================================================ */
+
+      fieldset {
+        border: 1px solid #e0e4eb;
+        border-radius: 10px;
+        margin: 0 0 14px;
+        padding: 5px 10px 12px;
+        background: #fff;
+        }
+
+      legend {
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0 6px;
+        color: #444;
+        }
+
+
+    /* Inputs */
+      label {
+        display: block;
+        margin: 0.5rem 0;
+        font-size: 0.85rem;
+        color: #333;
+        }
+
+      select, input[type="range"] {
+        width: 100%;
+        margin-top: 4px;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 0.85rem;
+        }
+
+      input[type="range"] {
+        padding: 0;
+        }
+
+
+    /* Checkbox groups */
+      #filtersPlantingConditions label,
+      #layerCheckboxes label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 4px 0;
+        font-size: 0.85rem;
+        }
+
+    /* Layers panel: Ottawa-only layers (Wards, Tree Equity) greyed out
+       and non-interactive while Toronto is the selected city - see
+       setOttawaOnlyLayersEnabled() in JS. */
+      #layerCheckboxes label.layer-disabled {
+        opacity: 0.4;
+        pointer-events: none;
+        }
+
+
+/* ============================================================
+   City Switcher (Ottawa / Toronto) - sits below the static title
+   card, always visible. Picking a city discards the other city's
+   trees entirely (never merged) - see switchCity() in JS.
+   ============================================================ */
+
+    .city-switcher {
+        align-self: flex-start;
+        display: flex;
+        gap: 6px;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(6px);
+        border-radius: 14px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        padding: 6px;
+        }
+
+    .city-btn {
+        padding: 6px 16px;
+        font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #444;
+        background: transparent;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        }
+
+    .city-btn:hover {
+        background: #f0f2f0;
+        }
+
+    .city-btn.active {
+        background: #647c64;
+        color: #fff;
+        }
+
+
+    /* Custom multi-select dropdown (e.g. Individual Species filter).
+       Expands inline rather than as an absolutely-positioned overlay,
+       since the parent .unified-panel already scrolls and an overlay would
+       get clipped by that ancestor's overflow. */
+      .custom-dropdown {
+        position: relative;
+        }
+
+      .custom-dropdown-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px;
+        margin-top: 4px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        background: #fff;
+        font-size: 0.85rem;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+        }
+
+      .custom-dropdown-toggle:hover {
+        background: #f9fafc;
+        }
+
+      .custom-dropdown-toggle .chevron {
+        color: #888;
+        margin-left: 8px;
+        transition: transform 0.15s;
+        }
+
+      .custom-dropdown.open .custom-dropdown-toggle .chevron {
+        transform: rotate(180deg);
+        }
+
+      .custom-dropdown-panel {
+        display: none;
+        margin-top: 6px;
+        border: 1px solid #e0e4eb;
+        border-radius: 8px;
+        background: #fff;
+        padding: 8px;
+        }
+
+      .custom-dropdown.open .custom-dropdown-panel {
+        display: block;
+        }
+
+      .dropdown-search {
+        width: 100%;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 0.8rem;
+        box-sizing: border-box;
+        }
+
+      .dropdown-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin: 6px 0 4px;
+        }
+
+      .dropdown-actions button {
+        border: none;
+        background: transparent;
+        color: #647c64;
+        font-size: 0.75rem;
+        cursor: pointer;
+        padding: 2px 4px;
+        text-decoration: underline;
+        }
+
+      .dropdown-checkbox-list {
+        max-height: 200px;
+        overflow-y: auto;
+        border-top: 1px solid #eef0f4;
+        padding-top: 4px;
+        }
+
+      .dropdown-checkbox-list label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 3px 0;
+        font-size: 0.8rem;
+        }
+
+      .dropdown-checkbox-list .no-matches {
+        font-size: 0.78rem;
+        color: #999;
+        padding: 6px 2px;
+        }
+
+
+/* ============================================================
+   Legend
+   ============================================================ */
+
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0;
+        font-size: 0.82rem;
+        color: #333;
+        }
+
+      .legend-swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 1px solid rgba(0,0,0,0.15);
+        flex-shrink: 0;
+        }
+
+      .legend-swatch.round {
+        border-radius: 50%;
+        }
+
+
+/* ============================================================
+   Layer status / result text
+   ============================================================ */
+
+      #layerStatus {
+        font-size: 0.75rem;
+        color: #777;
+        margin-top: 6px;
+        }
+
+      #filter-result {
+        font-size: 0.75rem;
+        color: #555;
+        background: #f9fafc;
+        border: 1px solid #e5e8f1;
+        border-radius: 6px;
+        padding: 6px;
+        font-family: "Courier New", monospace;
+        }
+
+      .data-source-note {
+        font-size: 0.72rem;
+        color: #999;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #eef0f4;
+        }
+
+
+    /* Reset button */
+      #reset-filters {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        border: 1px solid #e0e4eb;
+        background: #f2f2f2;
+        cursor: pointer;
+        transition: background 0.2s;
+        }
+
+      #reset-filters:hover {
+        background: #e6e6e6;
+        }
+
+
+    /* Output Results Summary button */
+      #output-results-summary {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        border: 1px solid #647c64;
+        background: #647c64;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+        }
+
+      #output-results-summary:hover {
+        background: #56695a;
+        }
+
+
+/* ============================================================
+   Results Summary modal
+   ============================================================ */
+
+      .results-modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        }
+
+      .results-modal-backdrop.open {
+        display: flex;
+        }
+
+      .results-modal {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+        width: 100%;
+        max-width: 620px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font: 13px/1.5 'Open Sans', Arial, Helvetica, sans-serif;
+        }
+
+      .results-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #eef0f4;
+        flex-shrink: 0;
+        }
+
+      .results-modal-header h2 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #222;
+        }
+
+      .results-modal-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        }
+
+      .results-modal-actions button {
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 4px 8px;
+        border-radius: 6px;
+        color: #555;
+        transition: background 0.15s;
+        }
+
+      .results-modal-actions button:hover {
+        background: #f0f2f0;
+        }
+
+      .results-modal-body {
+        padding: 18px 20px 22px;
+        overflow-y: auto;
+        }
+
+      .report-section-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #666;
+        margin: 18px 0 8px;
+        }
+
+      .report-section-title:first-child {
+        margin-top: 0;
+        }
+
+      .report-stat-row {
+        display: flex;
+        gap: 12px;
+        }
+
+      .report-stat {
+        flex: 1;
+        background: #f9fafc;
+        border: 1px solid #e5e8f1;
+        border-radius: 10px;
+        padding: 10px 12px;
+        }
+
+      .report-stat .value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #222;
+        line-height: 1.2;
+        }
+
+      .report-stat .label {
+        font-size: 0.7rem;
+        color: #777;
+        margin-top: 2px;
+        }
+
+      .report-donut-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        }
+
+      .report-group-legend {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        }
+
+      .report-bar-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 5px 0;
+        font-size: 0.78rem;
+        }
+
+      .report-bar-label {
+        width: 40%;
+        flex-shrink: 0;
+        color: #333;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        }
+
+      .report-bar-track {
+        flex: 1;
+        background: #eef0f4;
+        border-radius: 4px;
+        height: 10px;
+        overflow: hidden;
+        }
+
+      .report-bar-fill {
+        display: block;
+        height: 100%;
+        border-radius: 4px;
+        }
+
+      .report-bar-value {
+        width: 96px;
+        flex-shrink: 0;
+        text-align: right;
+        color: #555;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        }
+
+      .report-methodology {
+        font-size: 0.72rem;
+        color: #999;
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid #eef0f4;
+        }
+
+      .report-methodology p {
+        margin: 4px 0;
+        }
+
+    /* Print: show only the report, nothing else */
+      @media print {
+        body * {
+          visibility: hidden;
+          }
+        .results-modal, .results-modal * {
+          visibility: visible;
+          }
+        .results-modal {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          max-width: none;
+          max-height: none;
+          box-shadow: none;
+          border-radius: 0;
+          }
+        .results-modal-backdrop {
+          background: none;
+          position: static;
+          padding: 0;
+          }
+        .results-modal-actions {
+          display: none;
+          }
+        }
