@@ -2,8 +2,8 @@ const map = new maplibregl.Map({
     container: 'map',
     style:
         'https://api.maptiler.com/maps/470d6019-657f-4f7d-a018-6ec6ae0d0093/style.json?key=4xF6FrxAyNgBUQ4n4bUN',
-    center: [-75.67580482586735, 45.40584450123107],
-    zoom: 10
+    center: [-75.88367397233924, 45.26730028180128],
+    zoom: 9
   });
 
 //===================================================================

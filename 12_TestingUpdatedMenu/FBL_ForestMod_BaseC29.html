@@ -74,13 +74,13 @@
                     </button>
                     <div class="panel-body">
                         <p style="font-size:0.85rem; color:#333; margin:0 0 10px;">
-                            An interactive map of Ottawa &amp; Gatineau's street trees, compiled by the Forest Building Lab at Carleton University.
+                            An interactive map of the street trees of canadian cities, compiled by the Forest Building Lab at Carleton University.
                         </p>
                         <p style="font-size:0.8rem; color:#555; margin:0 0 4px;"><b>Compiled by:</b> Forest Building Lab @ Carleton University</p>
-                        <p style="font-size:0.8rem; color:#555; margin:0 0 4px;"><b>Last updated:</b> August 2026</p>
+                        <p style="font-size:0.8rem; color:#555; margin:0 0 4px;"><b>Last updated:</b> September 2026</p>
                         <div class="data-source-note" id="infoDataSourceNote">
                             <b>Data Source(s):</b><br>
-                            Open Data Ottawa (Forestry, Wards 2022&ndash;2026), Tree Equity Score 2025 (American Forests / ArcGIS Online)
+                            Open Data Ottawa & Open Data Toronto
                         </div>
                     </div>
                 </div>
@@ -106,16 +106,13 @@
                             <label id="layerEquityLabel"><input type="checkbox" id="layerEquityToggle"> Tree Equity Score 2025</label>
                         </div>
                         <p style="font-size: 0.75rem; color: #555; margin: 10px 0 0;">
-                            Districts shows each city's administrative boundaries (Ottawa Wards, or Toronto's City Wards) - it follows whichever city is currently selected above.
+                            Districts shows each city's administrative boundaries (i.e. Ottawa Wards, or Toronto's City Wards).
                         </p>
                         <p style="font-size: 0.75rem; color: #555; margin: 6px 0 0;">
                             Tree Equity Score reflects the distribution of the urban tree canopy in relation to socio-economic factors. A high value reflects areas whose tree canopy is suitably beneficial, whereas a low value reflects areas where the tree canopy doesn't meet the needs of its residents.
                         </p>
                         <p style="font-size: 0.72rem; color: #999; margin: 6px 0 0;">
-                            Covers Downtown Core, Inner Urban, Outer Urban, and Suburban areas together - one tick shows or hides all four at once.
-                        </p>
-                        <p style="font-size: 0.72rem; color: #999; margin: 6px 0 0;">
-                            Tree Equity Score is an Ottawa-only layer and is unavailable while Toronto is selected.
+                            Only active data for each city is shown.
                         </p>
                         <div id="layerStatus"></div>
                         <div class="data-source-note" id="layersDataSourceNote">
@@ -147,7 +144,7 @@
                             <!-- Populated by JS: an example donut + explanation, built from buildDonutMarkerEl -->
                         </div>
                         <p style="font-size: 0.72rem; color: #999; margin: 10px 0 0;">
-                            Map color, cluster donuts, and this legend all reflect Ecological Group. Building Group is a separate classification, available as a filter only (see Filters below) - it has no map color of its own.
+                            Map color, cluster donuts, and this legend all reflect Ecological Group. Building Group is a separate classification, available as a filter only.
                         </p>
                     </div>
                 </div>
@@ -184,14 +181,13 @@
                                 </div>
                             </div>
                             <p style="font-size: 0.75rem; color: #777; margin: 6px 0 0;">
-                                Leave unselected to show every species. Selecting one or more shows only those exact species (in addition to any Ecological Group or Building Group filter below).
+                                Leave unselected to show every species.
                             </p>
                         </fieldset>
 
                         <fieldset>
                             <legend>🌲 Ecological Group</legend>
                             <div>
-                                <label for="operator-eco-group"> Group:</label>
                                 <select name="operator" id="operator-eco-group">
                                     <option value="all">Show all</option>
                                     <!-- Options are populated from the ecologicalGroups object in JS -->
@@ -205,14 +201,13 @@
                         <fieldset>
                             <legend>🛠️ Building Group</legend>
                             <div>
-                                <label for="operator-building-group"> Group:</label>
                                 <select name="operator" id="operator-building-group">
                                     <option value="all">Show all</option>
                                     <!-- Options are populated from the buildingGroups object in JS -->
                                 </select>
                             </div>
                             <p style="font-size: 0.75rem; color: #777; margin: 6px 0 0;">
-                                Groups species by construction/structural wood properties - a separate classification from Ecological Group above (the same species can fall in a different-numbered group). Does not change map color.
+                                Groups species by shared construction/structural wood properties.
                             </p>
                         </fieldset>
 
@@ -235,7 +230,6 @@
                         <fieldset>
                             <legend>📏 Diameter</legend>
                             <div>
-                                <label for="diameterClassSelect"> Diameter class:</label>
                                 <select id="diameterClassSelect">
                                     <option value="all">Show all</option>
                                     <!-- Options are populated from DIAMETER_CLASSES in JS -->
