@@ -495,11 +495,75 @@ const TREE_OUT_FIELDS = [
     'HSURFACE', 'SSUPPORT', 'TRGUARD', 'GRATE', 'PLANTER', 'STAKED', 'WTUBES'
 ].join(',');
 
+//-------------------------------------------------------------------
+// Shared request helpers. A single failed request used to silently drop
+// that whole page of trees (no timeout, no status check, no retry); now
+// every request has a timeout, is checked for HTTP / service errors, and
+// is retried with exponential backoff before a page is given up on.
+//-------------------------------------------------------------------
+const FETCH_TIMEOUT_MS = 30000;
+const FETCH_MAX_ATTEMPTS = 3;
+const FETCH_BACKOFF_MS = 600;
+
+function sleepMs(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+async function withRetry(fn, attempts) {
+    const max = attempts || FETCH_MAX_ATTEMPTS;
+    let lastErr;
+    for (let attempt = 1; attempt <= max; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastErr = err;
+            // A 4xx (other than timeout / rate-limit) will fail identically
+            // every time - don't spend backoff time on it.
+            if (err && err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) break;
+            if (attempt < max) await sleepMs(FETCH_BACKOFF_MS * Math.pow(2, attempt - 1) + Math.random() * 300);
+        }
+    }
+    throw lastErr;
+}
+
+// fetch() + timeout + HTTP check + JSON parse. `validate(data)` may throw
+// to reject an HTTP-200 response that is really an error payload (ArcGIS
+// reports many failures that way).
+async function fetchJsonChecked(url, validate) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+        const resp = await fetch(url, { signal: controller.signal });
+        if (!resp.ok) {
+            const httpErr = new Error(`HTTP ${resp.status} ${resp.statusText}`);
+            httpErr.status = resp.status;
+            throw httpErr;
+        }
+        const data = await resp.json();
+        if (validate) validate(data);
+        return data;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+// Runs `worker(offset)` over `offsets` with limited concurrency.
+async function runPool(offsets, concurrency, worker) {
+    let next = 0;
+    const loop = async () => {
+        while (next < offsets.length) {
+            const myOffset = offsets[next];
+            next += 1;
+            await worker(myOffset);
+        }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, offsets.length) || 1 }, loop));
+}
+
 async function fetchAllTrees(onPageLoaded) {
     // 1. Find out how many records exist in total.
     const countUrl = `${TREE_QUERY_BASE}?where=1%3D1&returnCountOnly=true&f=json`;
-    const countResp = await fetch(countUrl);
-    const countData = await countResp.json();
+    const countData = await withRetry(() => fetchJsonChecked(countUrl, (d) => {
+        if (d.error) throw new Error(d.error.message || 'service error');
+    }));
     const total = countData.count;
     if (!total || total <= 0) {
         throw new Error('Could not determine tree count from the Ottawa Forestry service.');
@@ -512,40 +576,52 @@ async function fetchAllTrees(onPageLoaded) {
     let loadedCount = 0;
     let failedPages = 0;
 
+    // geometryPrecision=6 trims every coordinate to 6 decimals (~11 cm), the
+    // same precision the Excel export uses - noticeably smaller pages.
     async function fetchPage(offset) {
         const url = `${TREE_QUERY_BASE}?where=1%3D1&outFields=${TREE_OUT_FIELDS}&f=geojson`
-            + `&resultRecordCount=${PAGE_SIZE}&resultOffset=${offset}&orderByFields=OBJECTID`;
-        try {
-            const resp = await fetch(url);
-            const data = await resp.json();
-            const feats = data.features || [];
-            loadedCount += feats.length;
-            // Stream this page's features to the caller immediately instead
-            // of waiting for every page to finish, so the map can render
-            // progressively.
-            if (onPageLoaded) onPageLoaded(feats, loadedCount, total, failedPages);
-        } catch (err) {
-            failedPages += 1;
-            console.warn(`Failed to load tree page at offset ${offset}:`, err);
-            if (onPageLoaded) onPageLoaded([], loadedCount, total, failedPages);
+            + `&geometryPrecision=6&resultRecordCount=${PAGE_SIZE}&resultOffset=${offset}&orderByFields=OBJECTID`;
+        const data = await withRetry(() => fetchJsonChecked(url, (d) => {
+            if (d.error) throw new Error(d.error.message || 'service error');
+            if (!Array.isArray(d.features)) throw new Error('response had no features array');
+        }));
+        const feats = data.features;
+        const expected = Math.min(PAGE_SIZE, total - offset);
+        if (feats.length < expected) {
+            console.warn(`Ottawa page at offset ${offset} returned ${feats.length} of ${expected} expected trees.`);
         }
+        loadedCount += feats.length;
+        // Stream this page's features to the caller immediately instead
+        // of waiting for every page to finish, so the map can render
+        // progressively.
+        if (onPageLoaded) onPageLoaded(feats, loadedCount, total, failedPages);
     }
 
-    // 3. Fetch pages with limited concurrency (simple worker-pool pattern).
-    let nextIndex = 0;
-    async function worker() {
-        while (nextIndex < offsets.length) {
-            const myOffset = offsets[nextIndex];
-            nextIndex += 1;
-            await fetchPage(myOffset);
+    // 3. Fetch pages with limited concurrency. A page that still fails after
+    // its own retries is set aside and given one more, gentler pass at the
+    // end (low concurrency) before being reported as failed.
+    const deferred = [];
+    await runPool(offsets, PAGE_CONCURRENCY, async (offset) => {
+        try { await fetchPage(offset); } catch (err) {
+            console.warn(`Tree page at offset ${offset} failed, will retry after the main pass:`, err);
+            deferred.push(offset);
         }
+    });
+    if (deferred.length > 0) {
+        await sleepMs(1500);
+        await runPool(deferred, 2, async (offset) => {
+            try { await fetchPage(offset); } catch (err) {
+                failedPages += 1;
+                console.warn(`Failed to load tree page at offset ${offset}:`, err);
+                if (onPageLoaded) onPageLoaded([], loadedCount, total, failedPages);
+            }
+        });
     }
-    const workers = Array.from({ length: PAGE_CONCURRENCY }, () => worker());
-    await Promise.all(workers);
 
     if (failedPages > 0) {
         console.warn(`${failedPages} of ${numPages} pages failed to load - dataset may be incomplete.`);
     }
+    return { failedPages };
 }
 
 //===================================================================
@@ -634,61 +710,86 @@ async function torontoFetchJson(url) {
         }
     }
     if (!resp.ok) {
-        throw new Error(`Toronto CKAN API responded with HTTP ${resp.status} ${resp.statusText}.`);
+        const httpErr = new Error(`Toronto CKAN API responded with HTTP ${resp.status} ${resp.statusText}.`);
+        httpErr.status = resp.status;
+        throw httpErr;
     }
     return resp.json();
 }
 
+// Only the columns normalizeTorontoRecord() actually reads - the full
+// table carries ~a dozen more per row, ~688k rows. If the portal ever
+// rejects the `fields` list, fetchAllTorontoTrees() falls back to
+// requesting everything.
+const TORONTO_FIELDS = ['OBJECTID', 'STRUCTID', 'ADDRESS', 'STREETNAME', 'WARD', 'BOTANICAL_NAME', 'COMMON_NAME', 'DBH_TRUNK', 'geometry'].join(',');
+
 async function fetchAllTorontoTrees(onPageLoaded) {
+    const validate = (d) => {
+        if (!d || !d.success || !d.result || !Array.isArray(d.result.records)) {
+            throw new Error('Toronto CKAN datastore_search request returned an unsuccessful response.');
+        }
+    };
+    const pageUrl = (offset, useFields) => `${TORONTO_ACTION_BASE}?resource_id=${TORONTO_RESOURCE_ID}&limit=${TORONTO_PAGE_SIZE}&offset=${offset}`
+        + (useFields ? `&fields=${encodeURIComponent(TORONTO_FIELDS)}` : '');
+    const getPage = async (offset, useFields) => {
+        const data = await withRetry(() => torontoFetchJson(pageUrl(offset, useFields)));
+        validate(data);
+        return data;
+    };
+
     // 1. First page also reports the total record count (result.total),
     // so no separate count-only request is needed the way Ottawa's
-    // ArcGIS service requires.
-    const firstUrl = `${TORONTO_ACTION_BASE}?resource_id=${TORONTO_RESOURCE_ID}&limit=${TORONTO_PAGE_SIZE}&offset=0`;
-    const firstData = await torontoFetchJson(firstUrl);
-    if (!firstData.success || !firstData.result) {
-        throw new Error('Toronto CKAN datastore_search request returned an unsuccessful response.');
+    // ArcGIS service requires. Tries the trimmed column list first.
+    let useFields = true;
+    let firstData;
+    try {
+        firstData = await getPage(0, true);
+    } catch (err) {
+        console.warn('Toronto request with a trimmed column list failed; retrying with all columns:', err);
+        useFields = false;
+        firstData = await getPage(0, false);
     }
     const total = firstData.result.total || 0;
     let loadedCount = firstData.result.records.length;
     let failedPages = 0;
     if (onPageLoaded) onPageLoaded(firstData.result.records, loadedCount, total, failedPages);
 
-    if (loadedCount >= total) return;
+    if (loadedCount >= total) return { failedPages: 0 };
 
-    // 2. Remaining pages, same limited-concurrency worker-pool pattern
-    // as fetchAllTrees() above.
+    // 2. Remaining pages, same pool + deferred-retry pattern as Ottawa.
     const numPages = Math.ceil(total / TORONTO_PAGE_SIZE);
     const offsets = [];
     for (let i = 1; i < numPages; i++) offsets.push(i * TORONTO_PAGE_SIZE);
 
     async function fetchPage(offset) {
-        const url = `${TORONTO_ACTION_BASE}?resource_id=${TORONTO_RESOURCE_ID}&limit=${TORONTO_PAGE_SIZE}&offset=${offset}`;
-        try {
-            const data = await torontoFetchJson(url);
-            const recs = (data.success && data.result && data.result.records) || [];
-            loadedCount += recs.length;
-            if (onPageLoaded) onPageLoaded(recs, loadedCount, total, failedPages);
-        } catch (err) {
-            failedPages += 1;
-            console.warn(`Failed to load Toronto tree page at offset ${offset}:`, err);
-            if (onPageLoaded) onPageLoaded([], loadedCount, total, failedPages);
-        }
+        const data = await getPage(offset, useFields);
+        const recs = data.result.records;
+        loadedCount += recs.length;
+        if (onPageLoaded) onPageLoaded(recs, loadedCount, total, failedPages);
     }
 
-    let nextIndex = 0;
-    async function worker() {
-        while (nextIndex < offsets.length) {
-            const myOffset = offsets[nextIndex];
-            nextIndex += 1;
-            await fetchPage(myOffset);
+    const deferred = [];
+    await runPool(offsets, TORONTO_PAGE_CONCURRENCY, async (offset) => {
+        try { await fetchPage(offset); } catch (err) {
+            console.warn(`Toronto tree page at offset ${offset} failed, will retry after the main pass:`, err);
+            deferred.push(offset);
         }
+    });
+    if (deferred.length > 0) {
+        await sleepMs(1500);
+        await runPool(deferred, 2, async (offset) => {
+            try { await fetchPage(offset); } catch (err) {
+                failedPages += 1;
+                console.warn(`Failed to load Toronto tree page at offset ${offset}:`, err);
+                if (onPageLoaded) onPageLoaded([], loadedCount, total, failedPages);
+            }
+        });
     }
-    const workers = Array.from({ length: TORONTO_PAGE_CONCURRENCY }, () => worker());
-    await Promise.all(workers);
 
     if (failedPages > 0) {
         console.warn(`${failedPages} of ${numPages - 1} Toronto pages failed to load - dataset may be incomplete.`);
     }
+    return { failedPages };
 }
 
 // Converts one raw CKAN datastore record into a GeoJSON Feature shaped
@@ -743,9 +844,12 @@ let currentCity = 'ottawa';
 let loadGeneration = 0;
 
 // Simple on-screen status line (loading progress, then result counts).
+// Set when a finished load still had pages that failed every retry, so the
+// "Showing X of Y" line can't quietly imply the dataset is complete.
+let loadWarning = '';
 function setStatusText(text) {
     const el = document.getElementById('filter-result');
-    if (el) el.textContent = text;
+    if (el) el.textContent = text + (loadWarning && !stillLoadingTrees ? ` ⚠ ${loadWarning}` : '');
 }
 
 //===================================================================
@@ -844,12 +948,22 @@ map.on('load', () => {
 // module scope (not inside map.on('load')) so loadTreesForCity() can
 // reset it cleanly on every city switch, not just on first load.
 const RENDER_THROTTLE_MS = 750;
+const RENDER_THROTTLE_MAX_MS = 6000;
 let lastRenderTime = 0;
 let trailingRenderTimeout = null;
+// The cost of each re-cluster grows with the number of trees loaded so
+// far, so the gap between renders grows with it too (about 1 ms per 100
+// trees: ~750 ms early on, ~3 s at 300k, capped at 6 s). Early pages still
+// appear almost immediately; late in a big load the map stops thrashing,
+// and the final render is guaranteed when the load completes.
+function currentRenderInterval() {
+    return Math.min(RENDER_THROTTLE_MAX_MS, Math.max(RENDER_THROTTLE_MS, allTreesData.features.length / 100));
+}
 function scheduleRender() {
     const now = performance.now();
     const elapsed = now - lastRenderTime;
-    if (elapsed >= RENDER_THROTTLE_MS) {
+    const interval = currentRenderInterval();
+    if (elapsed >= interval) {
         lastRenderTime = now;
         updateFilters();
     } else if (!trailingRenderTimeout) {
@@ -857,7 +971,7 @@ function scheduleRender() {
             trailingRenderTimeout = null;
             lastRenderTime = performance.now();
             updateFilters();
-        }, RENDER_THROTTLE_MS - elapsed);
+        }, interval - elapsed);
     }
 }
 
@@ -875,6 +989,7 @@ function loadTreesForCity(city) {
     knownSpeciesSet = new Set();
     selectedIndividualSpecies.clear();
     stillLoadingTrees = true;
+    loadWarning = '';
     lastRenderTime = 0;
     if (trailingRenderTimeout) {
         clearTimeout(trailingRenderTimeout);
@@ -913,16 +1028,21 @@ function loadTreesForCity(city) {
         });
         allTreesData.features.push(...newFeatures);
         const failNote = failedPages > 0 ? ` (${failedPages} pages failed)` : '';
-        setStatusText(`Loading ${cityLabel} trees... ${loaded} / ${total}${failNote}`);
+        const pctDone = total > 0 ? ` (${Math.min(100, Math.floor((loaded / total) * 100))}%)` : '';
+        setStatusText(`Loading ${cityLabel} trees... ${loaded.toLocaleString()} / ${total.toLocaleString()}${pctDone}${failNote}`);
         scheduleRender();
     }
 
     const fetchFn = city === 'toronto' ? fetchAllTorontoTrees : fetchAllTrees;
 
     fetchFn(handlePage)
-        .then(() => {
+        .then((outcome) => {
             if (myGeneration !== loadGeneration) return;
             stillLoadingTrees = false;
+            const failed = outcome && outcome.failedPages ? outcome.failedPages : 0;
+            loadWarning = failed > 0
+                ? `${failed} page${failed === 1 ? '' : 's'} of trees (up to ${(failed * PAGE_SIZE).toLocaleString()}) could not be loaded - reload to retry.`
+                : '';
             renderSpeciesCheckboxList(); // ensure the dropdown reflects the complete species list
             if (trailingRenderTimeout) {
                 clearTimeout(trailingRenderTimeout);
