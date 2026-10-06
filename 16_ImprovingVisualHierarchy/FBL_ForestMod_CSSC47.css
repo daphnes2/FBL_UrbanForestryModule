@@ -910,7 +910,8 @@
         max-height: 150px;
         }
 
-      @media (max-width: 900px) {
+      /* screen only: when printing, the 80% zoom below gives the report a ~1020px layout width, so the printout keeps the wide two-column layout */
+      @media screen and (max-width: 900px) {
         .report-two-col { grid-template-columns: minmax(0, 1fr); }
         .report-district-layout {
           grid-template-columns: minmax(0, 1fr);
@@ -1069,6 +1070,10 @@
           print-color-adjust: exact;
           }
         .results-modal {
+          /* Print at 80%: the report prints far more neatly on Letter paper
+             at this scale, and the user would otherwise have to set the
+             browser's Scale option by hand. */
+          zoom: 0.8;
           position: absolute;
           top: 0;
           left: 0;
