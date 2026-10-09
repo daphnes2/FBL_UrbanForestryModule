@@ -1222,13 +1222,36 @@
         /* Smaller map on paper: stacked layout would otherwise stretch it
            to the full page width and leave a large empty gap */
         .report-district-map {
-          width: 62%;
+          width: 100%;
           max-width: 100%;
-          margin-left: auto;
-          margin-right: auto;
+          margin-left: 0;
+          margin-right: 0;
           }
         .report-district-map svg {
-          max-height: 95mm;
+          max-height: 120mm;
+          }
+        /* The legend sits BELOW the map on paper (not overlaid), laid out as
+           a wrapping row so it stays short and never hides any districts. */
+        .report-district-map-legend {
+          position: static;
+          max-width: none;
+          margin-top: 8px;
+          padding: 6px 4px 0;
+          background: none;
+          border: none;
+          border-top: 1px solid #e4e7e4;
+          border-radius: 0;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 2px 14px;
+          }
+        .report-district-map-legend .choropleth-legend-title {
+          flex-basis: 100%;
+          margin: 0 0 2px;
+          }
+        .report-district-map-legend .legend-row {
+          margin: 0 !important;
           }
         .report-section-title {
           break-after: avoid;
