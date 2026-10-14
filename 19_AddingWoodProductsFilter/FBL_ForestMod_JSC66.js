@@ -2687,55 +2687,33 @@ sectionHeaders.forEach((header) => {
 //===================================================================
 // Wood Product filter (Filters tab) - data and state
 //
-// Source: Wood_Construction_Products_BG_v3.xlsx, sheet "BG Suitability":
-// column B (Product) -> column M (Best-Fit Group(s)). Each entry is
-// [product, [building group ids]] and the ids are the BG numbers from
-// column M, which are used as this app's Building Group ids 1-7 (the
-// number, not the group's name). "-" in column M (no best-fit group) is an
-// empty list. Products with "-" in column M (MPP, PSL, Cellulose insulation)
-// are deliberately NOT listed: with no building group they could never match a
-// tree. Selecting products limits the map to trees whose Building Group is in
-// the UNION of the selected products' groups.
+// Source: Wood_Construction_Products_BG_v4.xlsx, sheet "BG Suitability".
+// Only products whose "Rating Basis" (column N) is "Osborne Table 1 - direct"
+// or "Osborne Table 1 - derived via component products" are listed (16 of the
+// 41 products); the other 25 are "Not covered by Osborne" and are left out.
+// Each entry is [product, [building group ids]]: product = column B, ids = the
+// BG numbers in column M "Best-Fit Group(s)", which are used as this app's
+// Building Group ids 1-7 (the number, not the group's name). Selecting
+// products limits the map to trees whose Building Group is in the UNION of
+// the selected products' groups.
 //===================================================================
 const WOOD_PRODUCT_GROUPS = [
-    ["Dimension (nominal) lumber", [2]],
-    ["Heavy timbers", [2, 6]],
-    ["Machine stress-rated (MSR) lumber", [2]],
-    ["Finger-joined lumber", [1, 2]],
-    ["Treated wood", [2]],
-    ["Furring strips / strapping", [1, 2]],
-    ["Softwood boards (board sheathing)", [1, 2]],
-    ["Glulam (glued-laminated timber)", [2]],
-    ["CLT (cross-laminated timber)", [2]],
-    ["NLT (nail-laminated timber)", [2]],
-    ["DLT (dowel-laminated timber)", [2, 6]],
-    ["LVL (laminated veneer lumber)", [2, 5]],
+    ["Dimension (nominal) lumber", [1, 2, 3, 4, 5]],
+    ["Heavy timbers", [1, 3, 4, 5, 6]],
+    ["Machine stress-rated (MSR) lumber", [1, 2, 3, 4, 5]],
+    ["Glulam (glued-laminated timber)", [1, 2]],
+    ["CLT (cross-laminated timber)", [1, 2, 3, 4, 5, 6, 7]],
+    ["NLT (nail-laminated timber)", [1, 2, 3, 4, 5]],
+    ["DLT (dowel-laminated timber)", [1, 2, 3, 4, 5]],
+    ["LVL (laminated veneer lumber)", [2, 3, 5]],
+    ["PSL (parallel strand lumber)", [5]],
     ["LSL (laminated strand lumber)", [5]],
-    ["Wood I-joists", [2, 5]],
-    ["Wood trusses", [2]],
-    ["Rim board", [2, 5]],
-    ["Plywood", [2, 7]],
+    ["Wood I-joists", [1, 2, 3, 4, 5]],
+    ["Wood trusses", [1, 2, 3, 4, 5]],
+    ["Rim board", [1, 2, 3, 4, 5]],
+    ["Plywood", [1, 2, 3, 4, 5]],
     ["OSB (oriented strand board)", [5]],
-    ["SIPs (structural insulated panels)", [5]],
-    ["Fibreboard sheathing (insulating board)", [1, 5]],
-    ["Particleboard", [5]],
-    ["MDF", [5]],
-    ["Wood fibre insulation board (rigid)", [1, 5]],
-    ["Wood fibre batts (flexible)", [1, 5]],
-    ["Loose-fill wood fibre", [1, 5]],
-    ["Wood shingles", [1]],
-    ["Wood shakes", [1]],
-    ["Solid wood siding", [1]],
-    ["Thermally modified wood", [5]],
-    ["Engineered wood siding", [5]],
-    ["Soffit and fascia boards", [1]],
-    ["Solid hardwood flooring", [6]],
-    ["Engineered wood flooring", [4, 5, 6, 7]],
-    ["Trim and mouldings", [1, 4, 6, 7]],
-    ["Wood panelling", [1, 6, 7]],
-    ["Wood windows", [1]],
-    ["Stair stringers and treads", [2, 6]],
-    ["Decking", [2]]
+    ["SIPs (structural insulated panels)", [5]]
 ];
 const selectedWoodProducts = new Set();
 
@@ -5066,3 +5044,36 @@ resultsModalBackdrop.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && resultsModalBackdrop.classList.contains('open')) closeResultsModal();
 });
+
+//===================================================================
+// Menu title fit (C61)
+// Sizes "URBAN FOREST MODULE" so the last letter ends exactly at the
+// right edge of the boxes below it (the city switcher), on one line.
+// C62: fills 95% of that width (slightly smaller than the exact fit).
+// Measured per machine because the fallback fonts differ in width.
+//===================================================================
+(function fitMenuTitle() {
+    const h1 = document.querySelector('.menu-header .title-text h1');
+    const edgeEl = document.getElementById('citySwitcher');
+    if (!h1 || !edgeEl) return;
+    const FIT_FRACTION = 0.95; // C62: end 5% short of the boxes' edge so it can never overrun
+    const TRACK_EM = 0.02; // letter-spacing set in the CSS (trailing space after the last letter)
+    function fit() {
+        const edgeRight = edgeEl.getBoundingClientRect().right;
+        const left = h1.getBoundingClientRect().left;
+        const target = edgeRight - left;
+        if (!(target > 40)) return;
+        const probe = 100;
+        h1.style.fontSize = probe + 'px';
+        const range = document.createRange();
+        range.selectNodeContents(h1);
+        const w = range.getBoundingClientRect().width; // at 100px, includes trailing letter-spacing
+        if (!(w > 0)) { h1.style.fontSize = ''; return; }
+        // visible width = width minus the trailing letter-spacing after the final E
+        h1.style.fontSize = (FIT_FRACTION * probe * target / (w - TRACK_EM * probe)).toFixed(2) + 'px';
+    }
+    fit();
+    window.addEventListener('resize', fit);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+    window.addEventListener('load', fit);
+})();

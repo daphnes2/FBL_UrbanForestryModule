@@ -8,7 +8,7 @@
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css'/>
-    <link rel="stylesheet" href="./FBL_ForestMod_CSSC57.css">
+    <link rel="stylesheet" href="./FBL_ForestMod_CSSC66.css">
     <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
     <!-- SheetJS (xlsx) - builds the multi-sheet Excel workbook for the Results Summary export. Same trusted unpkg CDN already used for maplibre-gl above; a normal static <script> include, not the dynamic JSONP pattern that triggered an earlier antivirus false-positive. -->
     <script src='https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'></script>
@@ -44,6 +44,11 @@
                     <p>2026 &copy; Forest Building Lab</p>
                 </div>
             </div>
+
+            <!-- Tree loading / result status (moved here in C59 so the
+                 loading signal sits at the very top of the rail, under the
+                 header). Text is written by setStatusText() in the JS. -->
+            <div id="filter-result" role="status" aria-live="polite"></div>
 
             <!-- City Switcher - picks one city's tree data at a time
                  (never merged). Always visible, part of the same card. -->
@@ -320,13 +325,12 @@
                             </div>
                             <p id="woodProductSummary" class="wood-product-summary" hidden></p>
                             <p style="font-size: 0.75rem; color: #777; margin: 6px 0 0;">
-                                Select one or more wood products to show only the trees in the building groups suited to them (source: BG Suitability sheet, Best-Fit Group(s)). Combines with the Building Group filter above. Leave unselected to show every tree.
+                                Select one or more wood products to show only the trees in the building groups best suited to them. Only products whose group ratings come directly or are derived from Osborne Table 1 are listed. Combines with the Building Group filter above. Leave unselected to show every tree.
                             </p>
                         </fieldset>
 
                         <fieldset>
                             <button id="reset-filters" type="button">♻️ Reset Filters</button>
-                            <div id="filter-result" style="margin-top:8px;"></div>
                         </fieldset>
 
                         <fieldset>
@@ -369,7 +373,7 @@
         </div>
 
     <!--Linking to Javascript File-->
-        <script src="./FBL_ForestMod_JSC57.js"></script>
+        <script src="./FBL_ForestMod_JSC66.js"></script>
 </body>
 
 </html>

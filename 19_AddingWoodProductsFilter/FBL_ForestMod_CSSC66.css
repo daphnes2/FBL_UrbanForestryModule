@@ -90,7 +90,8 @@
 
     .menu-header .title-text h1 {
         margin: 0;
-        font-size: 1.05rem;
+        font-size: 1.05rem; /* C62: fallback only - the JS (fitMenuTitle) sizes it to end at the boxes' right edge */
+        white-space: nowrap;
         font-weight: 800;
         letter-spacing: 0.02em;
         text-transform: uppercase;
@@ -505,6 +506,16 @@
         border-radius: 6px;
         padding: 6px;
         font-family: "Courier New", monospace;
+        }
+
+      /* C59: sits directly under the header, full card width, hidden until it has text */
+      #filter-result {
+        margin: 0 20px 12px;
+        flex-shrink: 0;
+        }
+
+      #filter-result:empty {
+        display: none;
         }
 
       .data-source-note {
@@ -1220,7 +1231,7 @@
           }
         /* Matches the menu-rail header (.menu-header .title-text h1 / p) */
         .results-print-brand-title {
-          font-size: 1.05rem;
+          font-size: 2.6rem; /* C64: twice the C63 size (print summary header only) */
           font-weight: 800;
           letter-spacing: 0.02em;
           text-transform: uppercase;
