@@ -260,8 +260,10 @@ function matchesGroupByLatin(normalizedBotanicalName, groupEntries) {
 //   1. the source's own botanical name (Toronto BOTANICAL_NAME), else
 //   2. SPECIES_NAME_ROWS below - the user-supplied "Tree Species List
 //      (Common and Scientific)" CSV: one row per species entry =
-//      [column B common name, column A scientific name, [column C/D
-//      alternative common names]]. A tree's common name is matched against
+//      [column B common name, column A scientific name, [column C-E
+//      alternative common names]] (C78: rebuilt from the user's
+//      "UpdatedOrderNov2026" workbook plus 23 genus-level rows such as
+//      "Maple Species" -> "Acer spp"; 186 rows). A tree's common name is matched against
 //      the column B name AND the alternative names, exactly
 //      (case/space-insensitive), else by the same words in any order ("Balsam
 //      Fir" = "Fir Balsam"). No match -> null, and the tree keeps its common
@@ -285,8 +287,10 @@ function matchesGroupByLatin(normalizedBotanicalName, groupEntries) {
 // scientific name and never changes props.SPECIES.
 //===================================================================
 const SPECIES_NAME_ROWS = [
+    ["Fir Species", "Abies spp", []],
     ["Balsam Fir", "Abies balsamea", []],
     ["Fir White", "Abies concolor", []],
+    ["Maple Species", "Acer spp", []],
     ["Hedge Maple", "Acer campestre", []],
     ["Amur Maple", "Acer ginnala", []],
     ["Bigleaf Maple", "Acer macrophyllum", []],
@@ -304,10 +308,13 @@ const SPECIES_NAME_ROWS = [
     ["Maple Freeman", "Acer x fremanii", []],
     ["Ohio Buckeye", "Aesculus glabra", []],
     ["Common Horsechestnut", "Aesculus hippocastanum", []],
+    ["Alder Species", "Alnus spp", []],
     ["Serviceberry", "Amelanchier spp", []],
+    ["Chokeberry", "Aronia melanocarpa", ["Choke Berry"]],
+    ["Birch Species", "Betula spp", []],
     ["Yellow Birch", "Betula alleghaniensis", []],
     ["American Dwarf Birch", "Betula glandulosa", []],
-    ["Birch Himalayan White Bark", "Betula jacquemontii", []],
+    ["Birch Himalayan White Bark", "Betula jacquemontii", ["Birch Himalayan White Bark"]],
     ["Sweet Birch", "Betula lenta", []],
     ["Birch Alaskan", "Betula neoalaskana", []],
     ["River Birch", "Betula nigra", []],
@@ -315,6 +322,7 @@ const SPECIES_NAME_ROWS = [
     ["Weeping birch", "Betula pendula", ["Silver birch"]],
     ["Gray Birch", "Betula populifolia", []],
     ["American Hornbeam", "Carpinus caroliniana", ["Blue Beech"]],
+    ["Hickory Species", "Carya spp", []],
     ["Bitternut Hickory", "Carya cordiformis", []],
     ["Pignut Hickory", "Carya glabra", []],
     ["Shagbark Hickory", "Carya ovata", []],
@@ -324,6 +332,7 @@ const SPECIES_NAME_ROWS = [
     ["Hackberry", "Celtis occidentalis", []],
     ["Katsura tree", "Cercidiphyllum japonicum", []],
     ["Redbud Eastern", "Cercis canadensis", []],
+    ["False Cypress Species", "Chamaecyparis spp", []],
     ["Yellowwood", "Cladrastis kentukea", []],
     ["Alternate-leaved Dogwood", "Cornus alternifolia", []],
     ["Flowering Dogwood", "Cornus florida", []],
@@ -331,12 +340,16 @@ const SPECIES_NAME_ROWS = [
     ["Red Osier Dogwood", "Cornus sericea", []],
     ["American Hazelnut", "Corylus americana", ["American Hazel"]],
     ["Turkish Hazel", "Corylus colurna", []],
+    ["Smoke Tree", "Cotinus spp", ["Smokebush"]],
+    ["Hawthorn", "Crataegus spp", []],
     ["Thornless Hawthorn", "Crataegus crus-galli var. inermis", []],
     ["Common Hawthorn", "Crataegus monogyna", []],
     ["Russian Olive", "Elaeagnus angustifolia", []],
+    ["Beech Species", "Fagus spp", []],
     ["American Beech", "Fagus grandifolia", []],
     ["Beech European", "Fagus sylvatica", []],
-    ["American White Ash", "Fraxinus americana", []],
+    ["Ash Species", "Fraxinus spp", []],
+    ["American White Ash", "Fraxinus americana", ["White Ash"]],
     ["Ash European", "Fraxinus excelsior", []],
     ["Black Ash", "Fraxinus nigra", []],
     ["Green Ash", "Fraxinus pennsylvanica", []],
@@ -354,21 +367,27 @@ const SPECIES_NAME_ROWS = [
     ["Yellow Poplar", "Liriodendron tulipifera", []],
     ["Tulip-tree", "Liriodendron tulipifera", []],
     ["Honeysuckle", "Lonicera", []],
-    ["Amur Maackia", "Maackia amurensis", []],
+    ["Amur Maackia", "Maackia amurensis", ["Amur Maakia"]],
+    ["Magnolia Species", "Magnolia spp", []],
     ["Cucumbertree", "Magnolia acuminata", []],
+    ["Apple Species", "Malus spp", []],
+    ["Crabapple Species", "Malus spp", []],
     ["Apple", "Malus domestica", ["Crab Apple", "Wild Apple"]],
     ["Dawn Redwood", "Metasequoia glyptostroboides", []],
+    ["Mulberry Species", "Morus spp", []],
     ["Mulberry", "Morus rubra", []],
     ["Black Tupelo", "Nyssa sylvatica", ["Swamp Tupelo"]],
-    ["American Hophornbeam", "Ostrya virginiana", ["American Ironwood"]],
-    ["Amur Cork tree", "Phellodendron amurense", []],
+    ["American Hophornbeam", "Ostrya virginiana", ["American Ironwood", "Ironwood"]],
+    ["Amur Corktree", "Phellodendron amurense", []],
     ["Ninebark", "Physocarpus opulifolius", []],
+    ["Spruce Species", "Picea spp", []],
     ["Norway Spruce", "Picea abies", ["European Spruce", "German Spruce"]],
     ["White Spruce", "Picea glauca", []],
     ["Black Spruce", "Picea mariana", []],
     ["Serbian Spruce", "Picea omorika", []],
     ["Blue Spruce", "Picea pungens", ["Colorado Spruce"]],
     ["Red Spruce", "Picea rubens", []],
+    ["Pine Species", "Pinus spp", []],
     ["Jack Pine", "Pinus banksiana", []],
     ["Shortleaf Pine", "Pinus echinata", []],
     ["Western White Pine", "Pinus monticola", []],
@@ -377,17 +396,20 @@ const SPECIES_NAME_ROWS = [
     ["Red Pine", "Pinus resinosa", []],
     ["Pitch Pine", "Pinus rigida", []],
     ["Eastern White Pine", "Pinus strobus", []],
-    ["Scots Pine", "Pinus sylvestris", []],
+    ["Scots Pine", "Pinus sylvestris", ["Scotch Pine"]],
     ["Loblolly Pine", "Pinus taeda", []],
     ["American Sycamore", "Platanus occidentalis", []],
     ["London Plane Tree", "Platanus x acerifolia", []],
+    ["Poplar Species", "Populus spp", []],
     ["Silver Poplar", "Populus alba", ["White Poplar"]],
     ["Balsam Poplar", "Populus balsamifera", []],
     ["Hybrid Black Poplar", "Populus canadensis", ["Canadian Poplar", "Carolina Poplar"]],
     ["Eastern Cottonwood", "Populus deltoides", []],
     ["Bigtooth Aspen", "Populus grandidentata", ["Largetooth Aspen"]],
+    ["Lombardy Poplar", "Populus nigra cv. Italica", []],
     ["European Aspen", "Populus tremula", []],
     ["Quaking Aspen", "Populus tremuloides", ["Trembling Aspen"]],
+    ["Cherry Species", "Prunus spp", []],
     ["American Plum", "Prunus americana", ["Wild plum"]],
     ["Sour Cherry", "Prunus cerasus", ["Tart Cherry", "Dwarf Cherry"]],
     ["Cherry Purple Leaf", "Prunus cistena", []],
@@ -395,10 +417,12 @@ const SPECIES_NAME_ROWS = [
     ["Canadian Plum", "Prunus nigra", []],
     ["Pin Cherry", "Prunus pensylvanica", []],
     ["Black Cherry", "Prunus serotina", []],
-    ["North American Chokecherry", "Prunus virginiana", ["Schubert Chokecherry", "Chokecherry"]],
+    ["North American Chokecherry", "Prunus virginiana", ["Schubert Chokecherry", "Chokecherry", "Choke cherry"]],
     ["Fir Douglas", "Pseudotsuga menziesii", []],
     ["Hoptree Common", "Ptelea trifoliata", []],
+    ["Pear Species", "Pyrus spp", []],
     ["Ornamental Pear", "Pyrus calleryana", []],
+    ["Oak Species", "Quercus spp", []],
     ["White Oak", "Quercus alba", []],
     ["Swamp White Oak", "Quercus bicolor", []],
     ["Scarlet Oak", "Quercus coccinea", []],
@@ -416,6 +440,7 @@ const SPECIES_NAME_ROWS = [
     ["Fragrant Sumac", "Rhus aromatica", []],
     ["Sumac", "Rhus typhina", ["Staghorn Sumac"]],
     ["Black Locust", "Robinia pseudoacacia", []],
+    ["Willow Species", "Salix spp", []],
     ["Corkscrew Willow", "Salix babylonica var. pekinensis", []],
     ["Bebb Willow", "Salix bebbiana", ["Beak Willow", "Long-Beaked Willow"]],
     ["Weeping Willow", "Salix matsudana", []],
@@ -423,6 +448,7 @@ const SPECIES_NAME_ROWS = [
     ["False Mountain Willow", "Salix pseudomonticola", []],
     ["Blue Arctic Willow", "Salix purpurea", []],
     ["Elderberry", "Sambucus nigra", []],
+    ["Mountain Ash Species", "Sorbus spp", []],
     ["American Mountain Ash", "Sorbus americana", []],
     ["European Mountain Ash", "Sorbus aucuparia", []],
     ["Showy Mountain Ash", "Sorbus decora", []],
@@ -430,11 +456,13 @@ const SPECIES_NAME_ROWS = [
     ["Swedish Whitebeam", "Sorbus intermedia", []],
     ["Japanese Lilac", "Syringa reticulata", []],
     ["Common Lilac", "Syringa vulgaris", []],
+    ["Yew Species", "Taxus spp", []],
     ["Canada Yew", "Taxus canadensis", []],
     ["Eastern White Cedar", "Thuja occidentalis", []],
-    ["American Basswood", "Tilia americana", []],
+    ["American Basswood", "Tilia americana", ["Basswood"]],
     ["Linden Littleleaf", "Tilia cordata", []],
-    ["Eastern Hemlock", "Tsuga canadensis", []],
+    ["Eastern Hemlock", "Tsuga canadensis", ["Hemlock"]],
+    ["Elm Species", "Ulmus spp", []],
     ["Homestead Elm", "Ulmus \"homestead\"", []],
     ["Accolade Elm", "Ulmus \"morton\"", []],
     ["American Elm", "Ulmus americana", []],
@@ -1177,6 +1205,18 @@ let loadGeneration = 0;
 // Set when a finished load still had pages that failed every retry, so the
 // "Showing X of Y" line can't quietly imply the dataset is complete.
 let loadWarning = '';
+
+// C79: inventory records that mark the start/end of a hedge row rather than
+// a tree (user, 2026-11-11: "The hedge start and end should not be
+// included"). They are dropped as each page arrives, so they never reach the
+// map, filters, counts, volumes, districts, the report or the Excel export.
+// Matched on the whole SPECIES value, case/space-insensitive.
+const NON_TREE_SPECIES = new Set(['hedge start', 'hedge end']);
+let excludedNonTreeRecords = 0; // per load, reported in the console and the report methodology
+function isNonTreeRecord(props) {
+    const sp = props && props.SPECIES;
+    return !!sp && NON_TREE_SPECIES.has(String(sp).trim().replace(/\s+/g, ' ').toLowerCase());
+}
 function setStatusText(text) {
     const el = document.getElementById('filter-result');
     if (el) el.textContent = text + (loadWarning && !stillLoadingTrees ? ` ⚠ ${loadWarning}` : '');
@@ -1336,6 +1376,7 @@ function loadTreesForCity(city) {
     selectedIndividualSpecies.clear();
     stillLoadingTrees = true;
     loadWarning = '';
+    excludedNonTreeRecords = 0;
     lastRenderTime = 0;
     if (trailingRenderTimeout) {
         clearTimeout(trailingRenderTimeout);
@@ -1358,9 +1399,12 @@ function loadTreesForCity(city) {
         // Toronto's CKAN response yields raw table rows that need
         // normalizing (including parsing the JSON-string geometry
         // field) into the same GeoJSON Feature shape.
-        const newFeatures = city === 'toronto'
+        const pageFeatures = city === 'toronto'
             ? rawItems.map(normalizeTorontoRecord).filter(Boolean)
             : rawItems;
+        // C79: drop hedge start/end markers (not trees)
+        const newFeatures = pageFeatures.filter((f) => !isNonTreeRecord(f.properties));
+        excludedNonTreeRecords += pageFeatures.length - newFeatures.length;
 
         // Precompute each tree's species-group ID once, on arrival, so
         // the color paint expression can do a cheap numeric lookup
@@ -1394,6 +1438,9 @@ function loadTreesForCity(city) {
             if (myGeneration !== loadGeneration) return;
             stillLoadingTrees = false;
             updateSpeciesNameHint();
+            if (excludedNonTreeRecords > 0) {
+                console.info(`[records] ${excludedNonTreeRecords.toLocaleString()} hedge start/end marker records excluded (not trees).`);
+            }
             if (speciesWithoutLatin.size > 0) {
                 console.info(`[species] ${speciesWithoutLatin.size} of ${knownSpeciesSet.size} species have no scientific name on file (shown by common name in scientific mode):`, [...speciesWithoutLatin].sort());
             }
@@ -4755,6 +4802,7 @@ function generateResultsSummary() {
         <p><b>Wood volume per hectare</b> divides the same total volume by ${cityLabel}'s total municipal land area (${cityHectares ? cityHectares.toLocaleString() : 'unknown'} ha) - fixed per city, not the area covered by the trees currently matching your filters, so the figure stays comparable across different filter selections within the same city rather than swinging with how spread out a given filter's matches happen to be. Because street trees are sparse relative to a whole city's land area (unlike a continuous forest stand), this number is often well under 1 m&sup3;/ha - shown to 3 significant figures rather than a fixed decimal count so a real small value doesn't display as a misleading flat "0".</p>
         <p><b>District figures</b> (the "By District" section, the District Choropleth and the Excel "By District" sheet) assign each tree to the ward polygon that contains its location (a point-in-polygon test against the same Ottawa Wards / Toronto City Wards boundaries as the Districts layer), then total that ward's trees, volume and carbon with exactly the methods above. Trees located outside every ward boundary appear as "Outside districts", so the district figures always add back up to the totals above. The district map shades each ward by five quantile classes (roughly equal numbers of districts per shade); its outlines are simplified for display only and never affect any figure.</p>
         ${excludedNote}
+        ${excludedNonTreeRecords > 0 ? `<p>${excludedNonTreeRecords.toLocaleString()} &ldquo;Hedge Start&rdquo; / &ldquo;Hedge End&rdquo; records in the ${cityLabel} inventory mark the ends of hedge rows rather than individual trees, and are excluded from the map and every figure.</p>` : ''}
         <p><b>Building groups</b> (Group 1&ndash;7) follow ${OSBORNE_2023_CITATION_HTML}${woodProductFilterInfo() ? ` Wood product ratings follow Table 1 of ${OSBORNE_CITATION_HTML}` : ''}</p>
         <p>This is an illustrative estimate, not a substitute for a certified carbon assessment.</p>
         <p><b>Data source:</b> ${CITY_LAYERS_TEXT[currentCity]}. ${CITY_LICENCE_TEXT[currentCity]}</p>
