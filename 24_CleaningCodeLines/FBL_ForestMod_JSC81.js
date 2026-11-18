@@ -1450,25 +1450,14 @@ function whenMapReady(fn) {
 
 // --- Districts (Ottawa Wards / Toronto City Wards) -------------------
 // A generic "administrative boundary" layer that works for whichever
-// city is currently selected, rather than an Ottawa-only "Wards"
-// layer. Both cities' source datasets are small (~24-25 polygons) -
-// a single request is enough for either, no pagination needed. Each
-// city's raw records are normalized at load time into the same two
+// city is currently selected. Each record is small enough not to be paginated.
+// Each city's raw records are normalized at load time into the same two
 // properties (_districtName, _districtNumber) so the layer's paint,
 // popup and toggle logic never need to know which city they came from.
 const OTTAWA_WARDS_URL = 'https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Wards_2022_2026/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson';
-// Confirmed via a live datastore_search: City of Toronto's "City Wards"
-// dataset (https://open.toronto.ca/dataset/city-wards/), current
-// 25-ward model. AREA_NAME holds the ward name, AREA_SHORT_CODE the
-// ward number; geometry is a JSON-encoded string exactly like the
-// Toronto street tree data (see normalizeTorontoRecord).
 const TORONTO_WARDS_RESOURCE_ID = '7672dac5-b383-4d7c-90ec-291dc69d37bf';
 
-// Ottawa's field names ("name"/"ward") looked up case-insensitively as
-// a defensive measure - if direct lowercase access was returning
-// "Unknown District" in testing, a casing mismatch in the actual
-// GeoJSON (e.g. "Name" or "NAME") is the most likely cause, and this
-// works regardless of which casing the service actually uses.
+// Finds ward/district labels in whichever case.
 function getPropCaseInsensitive(props, key) {
     if (props[key] !== undefined && props[key] !== null && props[key] !== '') return props[key];
     const lowerKey = key.toLowerCase();
@@ -1505,12 +1494,12 @@ async function fetchTorontoDistricts() {
         try {
             geom = typeof rec.geometry === 'string' ? JSON.parse(rec.geometry) : rec.geometry;
         } catch (err) {
-            return null; // malformed geometry - skip rather than guess
+            return null; // malformed geometry = skipped instead of guessed
         }
         if (!geom || !geom.type || !geom.coordinates) return null;
         return {
             type: 'Feature',
-            geometry: geom, // Polygon or MultiPolygon - MapLibre's fill/line layers accept either
+            geometry: geom, // Polygon or MultiPolygon
             properties: {
                 _districtName: rec.AREA_NAME || 'Unknown District',
                 _districtNumber: rec.AREA_SHORT_CODE || null
@@ -1524,8 +1513,8 @@ async function fetchTorontoDistricts() {
 // it's handed to the map source) so the ONE fetch is reused both by the
 // visual Districts layer (addDistrictsLayers/ensureDistrictsLoadedForCity
 // below) and by the tree-to-district spatial join used for the Results
-// Summary CSV export (findDistrictForPoint, further below) - the two no
-// longer trigger separate network requests for the same city's wards.
+// Summary CSV export (findDistrictForPoint, further below) - the two do not
+// trigger separate network requests for the same city's wards.
 // Each cached feature also gets a precomputed `_bbox` (see
 // computeGeometryBbox) so the spatial join can cheaply skip most
 // polygons before running the exact point-in-polygon test.
@@ -1548,7 +1537,7 @@ async function getDistrictsData(city) {
     districtsDataCache[city] = data;
     // Self-check for whoever loads the app: the wards' summed polygon area
     // should land close to the per-city land area in CITY_LAND_AREA_HECTARES
-    // (those figures came from dissolving these same boundaries in QGIS).
+    // (those figures came from dissolving these same boundaries in QGIS by map making team).
     const summedKm2 = data.features.reduce((sum, f) => sum + f.properties._areaKm2, 0);
     const expectedHa = CITY_LAND_AREA_HECTARES[city];
     console.info(`[districts] ${city}: ${data.features.length} wards, summed polygon area ${summedKm2.toFixed(1)} km2`
@@ -2366,9 +2355,9 @@ async function fillWardPopupStats(popup, wardKey) {
     }
 }
 
-// --- Tree Equity Score 2025 (Downtown Core, Inner Urban, Outer Urban,
-//     Suburban) - one checkbox controls all four together, not
-//     individually, per the requirement. -----------------------------
+// --- Tree Equity Score 2025 is available for Ottawa's urban forest but the data is split into four different sets:
+//     Downtown Core, Inner Urban, Outer Urban, Suburban).Coded as one checkbox controls all four together, not
+//     individually.
 const TREE_EQUITY_URLS = {
     'Suburban': 'https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Tree_Equity_Score_2025___Suburban/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson',
     'Inner Urban': 'https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Tree_Equity_Score_2025___Inner_Urban/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson',
@@ -2502,12 +2491,11 @@ layerTreesToggle.addEventListener('change', (e) => {
 // City Switcher (Ottawa / Toronto)
 //
 // Mutually exclusive - picking a city discards the other city's trees
-// entirely rather than merging or layering them, per the chosen
-// architecture. Ottawa-only reference layers (Wards, Tree Equity Score)
-// have no Toronto equivalent yet, so their checkboxes are disabled and
+// entirely rather than merging or layering them.
+// Ottawa-only reference layers (Wards, Tree Equity Score)
+// have no Toronto equivalent, so their checkboxes are disabled and
 // forced off while Toronto is selected, and re-enabled when switching
-// back to Ottawa (their loaded data, if any, is left in the map source
-// but hidden - no need to re-fetch if the user switches back).
+// back to Ottawa.
 //===================================================================
 const cityButtons = document.querySelectorAll('.city-btn');
 const layerEquityLabel = document.getElementById('layerEquityLabel');
@@ -2518,8 +2506,8 @@ const layersDataSourceNote = document.getElementById('layersDataSourceNote');
 // map's own initial center/zoom (see the maplibregl.Map constructor at
 // the top of this file); Toronto's is a similar city-scale framing.
 const CITY_MAP_VIEWS = {
-    ottawa: { center: [-75.67580482586735, 45.40584450123107], zoom: 10 },
-    toronto: { center: [-79.3832, 43.6532], zoom: 10 }
+    ottawa: { center: [-75.88367397233924, 45.26730028180128], zoom: 9 },
+    toronto: { center: [-79.42025997860812, 43.7178519923692], zoom: 10.25 }
 };
 
 const CITY_INFO_TEXT = {
@@ -2532,18 +2520,17 @@ const CITY_LAYERS_TEXT = {
 };
 
 // Source notes in the Info and Layers tabs, with the city's licence
-// statement. Run at load (C75: the HTML's static text named both cities
-// until the first switch) and on every city switch.
+// statement. Run at load and on every city switch.
 function updateDataSourceNotes(city) {
     const licence = `<br>${CITY_LICENCE_TEXT[city]}`;
     if (infoDataSourceNote) infoDataSourceNote.innerHTML = `<b>Sources:</b><br>${CITY_INFO_TEXT[city]}${licence}<br>Building groups: ${OSBORNE_2023_CITATION_HTML}<br>Wood product ratings: Table 1 of ${OSBORNE_CITATION_HTML}`;
     if (layersDataSourceNote) layersDataSourceNote.innerHTML = `<b>Sources:</b><br>${CITY_LAYERS_TEXT[city]}${licence}`;
 }
 updateDataSourceNotes(currentCity);
-// C76: full citation under the Wood Product filter's help text
+// Full citation under the Wood Product filter's help text
 const woodProductSourceEl = document.getElementById('woodProductSource');
 if (woodProductSourceEl) woodProductSourceEl.innerHTML = `Source: Table 1 of ${OSBORNE_CITATION_HTML}`;
-// C77: full citation under the Building Group filter's help text
+// Full citation under the Building Group filter's help text
 const buildingGroupSourceEl = document.getElementById('buildingGroupSource');
 if (buildingGroupSourceEl) buildingGroupSourceEl.innerHTML = `Source: ${OSBORNE_2023_CITATION_HTML}`;
 
@@ -2581,9 +2568,6 @@ function switchCity(city) {
     // one city's polygons at a time - if it's currently switched on,
     // reload it for the newly-selected city rather than leaving the
     // old city's boundaries showing.
-    // The previous city's per-district stats and shading are meaningless
-    // now - drop them right away rather than leaving them on screen until
-    // the new city's trees finish loading.
     latestDistrictStats = null;
     districtStatsInflight = null;
     clearChoroplethState();
@@ -2626,11 +2610,7 @@ function switchCity(city) {
     updateDataSourceNotes(city);
     setDataAttribution(city);
 
-    // Switching cities invalidates every current filter selection
-    // (Toronto has no Ownership/Trunk Structure/Status/Planting
-    // Conditions data, and neither city's exact SPECIES/species-group
-    // mix carries over meaningfully) - reset filters to a clean slate
-    // rather than silently keeping a stale selection.
+    // Switching cities invalidates every current filter selection - reset filters.
     resetAllFilters();
 
     whenMapReady(() => loadTreesForCity(city));
@@ -2664,11 +2644,7 @@ function setClusterGroupType(groupType) {
         if (map.getLayer('o_trees')) {
             map.setPaintProperty('o_trees', 'circle-color', buildGroupColorMatchExpr(groupType));
         }
-        // Every cached donut marker was built with the old palette/count
-        // fields - clear them all so updateClusterMarkers() rebuilds
-        // every visible cluster from scratch with the new ones, instead
-        // of reusing stale-colored DOM elements (the normal moveend/
-        // sourcedata path only rebuilds markers that are new or gone).
+        // UpdateClusterMarkers() rebuilds every visible cluster from scratch with the new ones.
         for (const id in clusterMarkersOnScreen) clusterMarkersOnScreen[id].remove();
         clusterMarkersOnScreen = {};
         updateClusterMarkers();
@@ -2770,7 +2746,7 @@ sectionHeaders.forEach((header) => {
 // Source: Wood_Construction_Products_BG_v4.xlsx, sheet "BG Suitability".
 // Only products whose "Rating Basis" (column N) is "Osborne Table 1 - direct"
 // or "Osborne Table 1 - derived via component products" are listed (16 of the
-// 41 products); the other 25 are "Not covered by Osborne" and are left out.
+// 41 products).
 // Each entry is [product, [building group ids]]: product = column B, ids = the
 // BG numbers in column M "Best-Fit Group(s)", which are used as this app's
 // Building Group ids 1-7 (the number, not the group's name). Selecting
@@ -2939,7 +2915,7 @@ const speciesWithoutLatin = new Set();
 // 30cm-wide bands from 0-150cm; an extra open-ended "151+ cm" band is
 // appended so unusually large trees still fall into a bucket instead of
 // being silently excluded. Adjust DIAMETER_CLASS_COUNT/DIAMETER_TYPICAL_MAX
-// if you'd rather have more/narrower bands.
+// if to have more/narrower bands.
 //===================================================================
 const DIAMETER_CLASS_COUNT = 5;
 const DIAMETER_TYPICAL_MAX = 150; // cm
@@ -2978,7 +2954,7 @@ function passesBuildingGroupFilter(props) {
 }
 
 // Wood Product filter: a tree passes when its Building Group is one of the
-// groups matched by any selected product (WOOD_PRODUCT_GROUPS). ANDed with
+// groups matched by any selected product (WOOD_PRODUCT_GROUPS). 'AND' with
 // the Building Group filter above, so ticking groups there as well narrows
 // the result to the overlap. "Other Species" (id 8) never matches a product.
 function passesWoodProductFilter(props) {
@@ -3040,8 +3016,7 @@ function updateFilters() {
     }
 
     // While pages are still streaming in, the loading-progress callback
-    // owns the status text - don't fight it with a "Showing X of Y" line
-    // that would just be stale a moment later.
+    // owns the status text.
     if (!stillLoadingTrees) {
         setStatusText(`Showing ${filteredFeatures.length.toLocaleString()} of ${allTreesData.features.length.toLocaleString()} trees`);
     }
@@ -3277,8 +3252,7 @@ document.querySelectorAll('#filtersPlantingConditions input[type=checkbox]').for
 //===================================================================
 // Individual Species dropdown (custom, multi-select via checkboxes,
 // with a search box - built dynamically from knownSpeciesSet rather
-// than a fixed list, since we don't have the full ~170-species domain
-// table, only whatever's actually present in the loaded data).
+// than a fixed list to show whatever's present in the loaded data).
 //===================================================================
 const speciesDropdown = document.getElementById('speciesDropdown');
 const speciesDropdownToggle = document.getElementById('speciesDropdownToggle');
@@ -3287,16 +3261,14 @@ const speciesSearchInput = document.getElementById('speciesSearchInput');
 const speciesCheckboxList = document.getElementById('speciesCheckboxList');
 const speciesClearSelectionBtn = document.getElementById('speciesClearSelection');
 
-// Rows of the species list for the current name mode. Common mode: one row per
-// distinct SPECIES value (unchanged). Scientific mode: one row per scientific
-// name - ticking it selects every SPECIES value that maps to it (e.g. two
-// common-name spellings of the same species) - plus one row per common name
-// that has no scientific name on file. The filter itself always stores the raw
-// SPECIES values, so the selection survives switching modes.
+// Rows of the species list for the current name mode.
+// Common mode: one row per distinct SPECIES value.
+// Scientific mode: one row per scientific name - ticking it selects every SPECIES
+// value that maps to it (e.g. two common-name spellings of the same species)
+// - plus one row per common name that has no scientific name on file.
+// The filter itself always stores the raw SPECIES values, so the selection survives switching modes.
 function speciesRowsForMode() {
     if (speciesNameMode !== 'latin') {
-        // C67: one row per common name as DISPLAYED (column-B order), so several
-        // spellings/orderings of the same name in the inventory share one row.
         const byLabel = new Map();
         knownSpeciesSet.forEach((raw) => {
             const label = canonicalCommonName(raw);
@@ -3513,9 +3485,7 @@ updateSelectedConditions();
 // upper stem/crown-adjacent wood the way a sawlog-volume estimate
 // would.
 //
-// Table 6 covers 34 species by common name. Ottawa's raw SPECIES codes
-// were never confirmed against the live service (same caveat as the
-// species-group matching elsewhere in this file), so matching here
+// Table 6 covers 34 species by common name. Matching here
 // reuses the same word-matching approach as ecologicalGroups, just against
 // this paper's specific species list. Trees whose species don't match
 // any of the 34 fall back to the previous flat-cylinder approximation -
@@ -3577,10 +3547,7 @@ function getUngTaperCoefficients(speciesValue) {
 }
 
 // Same botanical-name-first / no-English-fallback logic as
-// computeEcoGroupIdForTree above, applied to the taper-coefficient
-// lookup. Toronto's BOTANICAL_NAME is actually a BETTER match key here
-// than Ottawa's inferred SPECIES codes, since it's an unambiguous Latin
-// binomial rather than a guessed word-order mapping.
+// computeEcoGroupIdForTree above, applied to the taper-coefficient lookup. 
 function getUngTaperCoefficientsForTree(props) {
     if (props._botanicalName) {
         const norm = normalizeLatinBinomial(props._botanicalName);
@@ -3629,16 +3596,8 @@ function ungTaperVolumeM3(dbhCm, coeffs) {
 
 // --- Fallback assumptions for species NOT in the paper's 34-species
 // table (see the match/fallback counts surfaced in the report) -------
-// C80: stored embodied carbon factor supplied by the user (2026-11-13):
-// 0.5 kgCO2e per kg of wood, "as used frequently in material ecology
-// estimates". It replaces the ICE database value (0.493, "Timber, average
-// of all data, no carbon storage"), which the user stopped using because
-// ICE is now restricted to non-commercial/educational use.
+// Frequently used average stored embodied carbon factor: 0.5 kgCO2e per kg of wood.
 const TIMBER_CARBON_FACTOR_KG_CO2E_PER_KG = 0.5;
-// Wood density: 500 kg/m3 is an unsourced placeholder applied to every
-// tree (it was chosen inside ICE's 350-800 kg/m3 range, which is no
-// longer cited). A sourced replacement (per-species basic densities from
-// Gonzalez 1990 / Alemdag 1984) is under review and NOT applied yet.
 const ASSUMED_WOOD_DENSITY_KG_PER_M3 = 500;
 // Only used for trees whose species has no match in UNG_TAPER_COEFFICIENTS.
 const FALLBACK_ASSUMED_TREE_HEIGHT_M = 10;
@@ -3697,28 +3656,17 @@ function computeEmbodiedCarbonEstimate(features) {
 // Total municipal land area (hectares) for each city, used as the fixed
 // denominator for "wood volume per hectare" in the Results Summary -
 // deliberately the WHOLE city's area, not the bounding box of whatever
-// trees currently match the filters. A per-filter bounding box was tried
-// first (C31) and rejected: it made the figure incomparable across
-// different filter selections (a tightly clustered filter reads
-// artificially dense, a citywide filter reads artificially sparse,
-// purely from how spread out the matches happen to be) rather than a
-// stable measure of "how much usable wood per hectare of the city".
-// Values supplied directly by the user, calculated from the dissolved
-// boundaries of this app's own Ward/District layers (see
-// fetchOttawaDistricts/fetchTorontoDistricts above): Ottawa 2,894 km²
-// (289,442 ha), Toronto 643 km² (64,276 ha).
+// trees currently match the filters. Total municipal land area determined
+// by FBL team as calculated from the dissolved boundaries each city's Ward/District layers using QGIS.
+// (see fetchOttawaDistricts/fetchTorontoDistricts above):
+// Ottawa 2,894 km² (289,442 ha),
+// Toronto 643 km² (64,276 ha).
 const CITY_LAND_AREA_HECTARES = {
     ottawa: 289442,
     toronto: 64276
 };
 
-// Formats a wood-volume-per-hectare figure for display. This metric is
-// often naturally small (street trees are sparse relative to a whole
-// city's land area, unlike a continuous forest stand), so a fixed
-// 1-2 decimal display would frequently round down to a flat "0" and
-// look broken - toPrecision(3) instead shows 3 significant figures
-// (e.g. 0.0157, or 0.000342 for a narrow filter), so a real non-zero
-// value never silently disappears.
+// Formats a wood-volume-per-hectare figure for display to 3 significant figures.
 function formatVolumePerHectare(value) {
     if (value === null || value === undefined) return 'N/A';
     if (value === 0) return '0 m&sup3;/ha';
@@ -3726,7 +3674,7 @@ function formatVolumePerHectare(value) {
 }
 
 // A larger, static (non-interactive) version of the cluster donut, sized
-// for the report rather than for a map marker. Deliberately separate
+// for the report rather than for a map marker. Separate
 // from buildDonutMarkerEl(), which is tightly coupled to cluster-marker
 // sizing thresholds and click-to-zoom behavior that don't apply here.
 // Takes an explicit `colors` palette (ECO_GROUP_COLORS or
@@ -3891,8 +3839,7 @@ function makeReportSubTitle(text) {
 
 // The expandable per-district detail: headline figures, both group
 // distributions and the diameter breakdown (all as counts, with
-// percentages of THIS district's trees). Species is deliberately NOT
-// repeated here - it stays in the report's main summary above.
+// percentages of THIS district's trees). Species not repeated here.
 function buildDistrictDetailContent(w) {
     const el = document.createElement('div');
     if (w.count === 0) {
@@ -3935,8 +3882,8 @@ function buildDistrictDetailContent(w) {
 // Results Summary choropleth map (static inline SVG)
 //
 // A plain SVG rather than a second MapLibre map: it prints/exports with
-// the report, needs no WebGL, and the report is a snapshot anyway. Ward
-// outlines are projected (equirectangular, scaled by cos(mid-latitude) so
+// the report and needs no WebGL.
+// Ward outlines are projected (equirectangular, scaled by cos(mid-latitude) so
 // shapes aren't stretched) and thinned with Douglas-Peucker - ward
 // polygons from the open-data services carry far more vertices than a
 // ~600px-wide picture can show. Computed once per loaded boundary set.
@@ -4127,16 +4074,15 @@ function buildDistrictDetailEl(w, ctx) {
 }
 
 //===================================================================
-// C73: group filters for the By District section. Two checkbox dropdowns
+// Group filters for the By District section in result summary. Two checkbox dropdowns
 // (ecological groups, building groups) sit above the district bars' legend.
 // Ticking groups narrows the trees the WHOLE By District section is built
 // from - the bars, their group split, the choropleth map and each expanded
 // district - to trees in a ticked ecological group AND a ticked building
 // group (several ticks in one dropdown are OR'd; an empty dropdown means
 // "Show all"). They narrow only this section of the report: the overall
-// summary above, the Filters tab and the map on the page are unaffected. Since
-// C74 the Excel "By District" sheet follows them too (the other two sheets
-// do not). Stats come from the same engine as everything else
+// summary above, the Filters tab and the map on the page are unaffected.
+// Stats come from the same engine as everything else
 // (computeDistrictStats over the narrowed tree list).
 //===================================================================
 const reportGroupFilterSel = { eco: new Set(), building: new Set() };
@@ -4163,7 +4109,7 @@ function reportGroupFilterNote() {
 }
 
 // Trees the By District section is built from: the Filters-tab selection AND
-// the two report dropdowns. Shared by the report and (C74) the Excel
+// the two report dropdowns. Shared by the report and the Excel
 // "By District" sheet, so the two can't disagree.
 function reportGroupFilteredFeatures() {
     const E = reportGroupFilterSel.eco, B = reportGroupFilterSel.building;
@@ -4265,7 +4211,7 @@ function renderDistrictReportSection(container, entry) {
     const keys = groupKeysForType(groupType).concat(['Other Species']);
     const valueOf = (w) => districtMetricValue(w, metric, 'total');
 
-    // The methodology notes live in this section's left column while it is
+    // The methodology notes are placed in this section's left column while it is
     // drawn; rescue them before the section is cleared and redrawn.
     const methodologyEl = reportDistrictState && reportDistrictState.container === container ? reportDistrictState.methodologyEl : null;
     if (methodologyEl && container.contains(methodologyEl)) container.after(methodologyEl);
@@ -4330,7 +4276,7 @@ function renderDistrictReportSection(container, entry) {
     const maxVal = Math.max(...ranked.map(valueOf), 0) || 1;
     const totalVal = ranked.reduce((s, w) => s + valueOf(w), 0);
 
-    // C73: group filters (hidden in print; the note below states them on paper).
+    // Group filters (hidden in print; the note below states them on paper).
     const filterRow = document.createElement('div');
     filterRow.className = 'report-district-groupfilter';
     filterRow.appendChild(buildGroupFilterDropdown('eco', 'Show only ecological groups', applyReportGroupFilter));
@@ -4444,7 +4390,7 @@ function renderDistrictReportSection(container, entry) {
 // assignment; the rest of the report is already on screen by then.
 async function fillDistrictReportSection(container, methodologyEl) {
     reportDistrictGroupType = selectedClusterGroupType; // each new report starts from the rail's setting
-    reportGroupFilterSel.eco.clear(); reportGroupFilterSel.building.clear(); reportGroupFilterOpen = null; // C73: each new report starts with no group filters
+    reportGroupFilterSel.eco.clear(); reportGroupFilterSel.building.clear(); reportGroupFilterOpen = null; // Each new report starts with no group filters
     reportGroupFilterRun += 1;
     container.innerHTML = '';
     container.appendChild(makeReportSubTitle('By District'));
@@ -4717,8 +4663,7 @@ function generateResultsSummary() {
 // Results Summary: volume-flow Sankey (Ecological Group -> Building Group)
 //
 // Shown only while at least one Ecological or Building Group is ticked in
-// the Filters tab. Every tree belongs to exactly one ecological group and
-// one building group, so the wood volume of the filtered trees can be laid
+// the Filters tab. Wood volume of the filtered trees can be laid
 // out as a bipartite flow: left nodes = ecological groups, right nodes =
 // building groups, and each ribbon's width = the summed stem volume (m3) of
 // the trees that are in BOTH groups. Volumes come from the same
@@ -4754,7 +4699,7 @@ function computeGroupVolumeMatrix(features) {
     return { matrix, total, treesWithVolume, treesWithoutVolume };
 }
 
-// C72: width (px, SVG user units ~ CSS px) of a Sankey label, measured with a
+// Width (px, SVG user units ~ CSS px) of a Sankey label, measured with a
 // canvas in the page's own font so the label column can be sized to fit the
 // longest name on ONE line. Falls back to a per-character estimate.
 let sankeyMeasureCtx = null;
@@ -4838,7 +4783,7 @@ function buildGroupVolumeSankeySection(features) {
         if (rv > 0) right.push({ id: g, label: bldKeys[g - 1], value: rv, color: bldColors[g] });
     }
 
-    // C72: every label is ONE line of name plus ONE line of values below it
+    // Every label is ONE line of name plus ONE line of values below it
     // (no wrapping). The label column is sized to the longest name; the
     // blocks must all fit in each column without touching, so the plot is
     // made taller when many groups are drawn.
@@ -4924,7 +4869,7 @@ function buildGroupVolumeSankeySection(features) {
             r.appendChild(el('title', {}, `${n.label} (${side === 'left' ? 'ecological' : 'building'})\n${fmtV(n.value)} m³ · ${((n.value / total) * 100).toFixed(1)}% of the total volume`));
             svg.appendChild(r);
         });
-        // C72: a label sits beside its own node when it can. Labels are first
+        // A label sits beside its own node when it can. Labels are first
         // spread so none touch; any label whose block ends up level with
         // somewhere OUTSIDE its node's vertical extent is "pulled out": it is
         // moved further from the column and joined to the node by a thin lead
@@ -4978,9 +4923,7 @@ function buildGroupVolumeSankeySection(features) {
 //   - "Results Summary": the same aggregate figures the visual report
 //     itself shows (group/species/diameter distributions, wood volume,
 //     embodied carbon), as plain tables rather than charts.
-// A true multi-sheet file needs the .xlsx format itself - a CSV has no
-// concept of a second sheet - so this replaced the earlier plain-CSV
-// export. SheetJS (the `XLSX` global, loaded via a normal <script> tag
+// SheetJS (the `XLSX` global, loaded via a normal <script> tag
 // in the HTML head, same trusted unpkg CDN already used for
 // maplibre-gl) builds the workbook and triggers the download; no server
 // round-trip, everything happens in the browser.
@@ -5001,7 +4944,7 @@ function buildGroupVolumeSankeySection(features) {
 // choice this export does not fill that gap with an inferred value
 // (derived from the same word-matching used for group assignment),
 // since that would present a guess as if it were sourced data; 'NULL'
-// marks it as genuinely absent rather than an empty cell that could
+// marks it as absent rather than an empty cell that could
 // read as an oversight.
 //
 // Longitude/Latitude are rounded to 6 decimal places (~11cm of
@@ -5283,7 +5226,7 @@ async function downloadResultsWorkbook() {
     try {
         districtEntry = await getFreshDistrictStats((p) => setStatusText(`Assigning trees to districts... ${Math.round(p * 100)}%`), true);
         if (!districtEntry) districtEntry = await getFreshDistrictStats(null, true);
-        // C74: when the report's By District group dropdowns are in use, the
+        // When the report's By District group dropdowns are in use, the
         // sheet is built from the same narrowed trees as that section.
         if (districtEntry && reportGroupFilterActive()) {
             const narrowed = reportGroupFilteredFeatures();
@@ -5338,17 +5281,17 @@ document.addEventListener('keydown', (e) => {
 });
 
 //===================================================================
-// Menu title fit (C61)
+// Menu title fit
 // Sizes "URBAN FOREST MODULE" so the last letter ends exactly at the
 // right edge of the boxes below it (the city switcher), on one line.
-// C62: fills 95% of that width (slightly smaller than the exact fit).
+// Fills 95% of that width (slightly smaller than the exact fit).
 // Measured per machine because the fallback fonts differ in width.
 //===================================================================
 (function fitMenuTitle() {
     const h1 = document.querySelector('.menu-header .title-text h1');
     const edgeEl = document.getElementById('citySwitcher');
     if (!h1 || !edgeEl) return;
-    const FIT_FRACTION = 0.95; // C62: end 5% short of the boxes' edge so it can never overrun
+    const FIT_FRACTION = 0.95; // Fills 95% of that width (slightly smaller than the exact fit).
     const TRACK_EM = 0.02; // letter-spacing set in the CSS (trailing space after the last letter)
     function fit() {
         const edgeRight = edgeEl.getBoundingClientRect().right;
